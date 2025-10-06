@@ -1,0 +1,61 @@
+Manual de Regras Oficiais – Breath!
+Visão Geral
+Breath! é um jogo de cartas estratégico inspirado em duelos marciais. Cada jogador assume a postura de um lutador e precisa vencer o oponente através de decisões rápidas, leitura de jogadas e controle de fôlego. O jogo prioriza agilidade mental e tensão tática, com ritmo acelerado e poucas margens para erro.
+Componentes do Jogo
+Cartas (Ataque, Defesa, Esquiva)
+Tokens de Fôlego (representam a energia vital dos lutadores)
+Tokens de Postura (representam as posições A, B ou C)
+Jogadores
+2 jogadores. Cada jogador possui:
+- Uma postura atual (A, B ou C)
+- Uma mão de 3 cartas
+- 3 pontos de Fôlego iniciais
+Estrutura da Rodada
+1. Ambos os jogadores escolhem uma carta em segredo.
+2. As cartas são reveladas simultaneamente.
+3. Determina-se a ordem de resolução com base na prioridade:
+   - A prioridade alterna a cada rodada.
+   - Jogadas defensivas (bloqueio ou esquiva) roubam a prioridade se forem usadas contra uma jogada ofensiva.
+   - Se ambos fizerem jogadas defensivas, segue-se a prioridade normal.
+4. As jogadas são resolvidas uma por vez.
+5. Ao fim da rodada, cada jogador recupera +1 de fôlego (máximo de 3).
+Tipos de Carta
+Ataque (atk):
+  - Requer postura inicial específica.
+  - Gasta 1 ponto de fôlego.
+  - Mira uma postura do oponente.
+  - Acerta se o oponente não defender corretamente nem esquivar de forma eficaz.
+  - Causa 2 de dano ao acertar.
+
+Defesa (def):
+  - Requer postura inicial específica.
+  - Gasta 1 ponto de fôlego no ato.
+  - Se defender corretamente a postura-alvo do ataque, o jogador ganha direito a realizar uma ação extra gratuita:
+    - A carta extra pode ser jogada imediatamente após a ação ofensiva do adversário.
+    - A carta deve respeitar a postura atual, mas não consome fôlego.
+  - Se errar a defesa (alvo incorreto), o jogador sofre o dano total (2).
+
+Esquiva (dodge):
+  - Permite trocar de postura.
+  - Não exige postura inicial.
+  - Gasta 1 ponto de fôlego.
+  - Se a nova postura não for o alvo do ataque inimigo, a esquiva é bem-sucedida (sem dano).
+  - Se a nova postura for o alvo, o jogador sofre 3 de dano (-1 pelo custo + -2 pelo dano do ataque).
+Sistema de Fôlego
+Cada jogador começa com 3 pontos de fôlego. Esse recurso é essencial para realizar ações e sobreviver no campo de batalha.
+Gastos e Recuperações:
+  - Ataque: -1
+  - Esquiva: -1
+  - Defesa: -1
+  - Ação extra (por defesa bem-sucedida): 0
+  - Ao fim da rodada: +1 (até o máximo de 3)
+Condição de Derrota
+Se um jogador chegar a 0 de fôlego ao final de qualquer ação (incluindo ataques e ações extras), ele é derrotado imediatamente.
+Exemplo de Prioridade com Ação Extra
+Prioridade da rodada: P2
+Jogada de P1: Defesa
+Jogada de P2: Ataque
+→ P1 defende com sucesso o ataque de P2 → ganha direito a ação extra gratuita
+→ P1 joga carta de ataque e acerta → P2 cai antes da próxima rodada
+Encerramento
+Este conjunto de regras compõe a base do modo tradicional de Breath!, priorizando partidas rápidas, leitura tática e decisões de alto impacto. É um duelo de mentes afiadas, onde qualquer erro pode ser fatal — exatamente como em uma luta marcial clássica.

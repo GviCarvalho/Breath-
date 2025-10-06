@@ -1,0 +1,103 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --bg0:#f6f7fb;--bg1:#eef1f5;--ink:#0f172a;--muted:#475569;
+  --accent:#10b981;--accent-2:#0ea5e9;--danger:#ef4444;--warn:#f59e0b;
+  --card:#ffffff;--border:#e5e7eb;--shadow:0 6px 16px rgba(15, 23, 42, .08);
+}
+.playmat{background:radial-gradient(1200px 600px at 50% 30%, #e6ebf3 10%, #dfe6ee 35%, #d8e0ea 60%, #d3dbe6 80%, #ced7e3 100%);} 
+.arena-ring{position:relative;}
+.arena-ring:before{content:"";position:absolute;inset:-8px; border-radius:24px; border:1px dashed rgba(15,23,42,.12);}
+
+@keyframes breath-shake{0%{transform:translate(0,0) rotate(0);}20%{transform:translate(-2px,1px) rotate(-0.5deg);}40%{transform:translate(2px,-1px) rotate(0.4deg);}60%{transform:translate(-1px,2px) rotate(-0.3deg);}80%{transform:translate(1px,-2px) rotate(0.2deg);}100%{transform:translate(0,0) rotate(0);} }
+.animate-shake{animation:breath-shake .35s ease-in-out both;}
+
+@keyframes breath-dash-right{from{transform:translateX(0);opacity:.9}to{transform:translateX(18px);opacity:0}}
+@keyframes breath-dash-left{from{transform:translateX(0);opacity:.9}to{transform:translateX(-18px);opacity:0}}
+.dash-right:after,.dash-left:after{content:"";position:absolute;top:50%;width:28px;height:2px;background:linear-gradient(90deg, rgba(15,23,42,.0), rgba(15,23,42,.25), rgba(15,23,42,.0));}
+.dash-right:after{left:100%;transform:translateY(-50%);animation:breath-dash-right .45s ease forwards}
+.dash-left:after{right:100%;transform:translateY(-50%);animation:breath-dash-left .45s ease forwards}
+
+.banner{box-shadow:var(--shadow);border:1px solid var(--border);background:linear-gradient(#fff, #fafafa)}
+
+@keyframes pop-scale {0%{transform:scale(.96);opacity:.0}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1);opacity:1}}
+.pop-anim{animation:pop-scale .22s cubic-bezier(.2,.9,.2,1) both}
+
+.slot-drag-over{box-shadow:0 10px 30px rgba(14,165,233,.12);transform:translateY(-4px);transition:box-shadow .12s, transform .12s}
+.slot-animate-change{outline:2px solid rgba(16,185,129,.12);box-shadow:0 12px 34px rgba(16,185,129,.08)}
+
+/* Hide only the top-level LocalGame header/title (not arena HUD headers) */
+.mode-local main > div > header { display: none !important; }
+/* ===== Card overlay simplification (art + badges only) ===== */
+/* Generalized rules for the unified .card renderer.
+   These don't rely on inline width/height Tailwind classes and scale
+   using the --card-width / --card-height variables (set globally).
+ */
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ensure the art image occupies the full card area and preserves artwork
+   (object-fit: contain keeps the whole art visible). The element is
+   absolutely positioned so overlays (name, badges) can be stacked above. */
+.card > .card-art,
+.card .card-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* preserve full artwork */
+  z-index: 1;
+  background: var(--card); /* fallback background color behind art */
+}
+
+/* Top safe area for the card name */
+.card .card-name,
+.card .font-card-name {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  top: calc(var(--card-height, 240px) * 0.04);
+  font-size: calc(var(--card-width, 165px) * 0.11);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Bottom-center badges area */
+.card .card-badges,
+.card .card-badges img,
+.card > .card-badges {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  bottom: calc(var(--card-height, 240px) * 0.04);
+  display: flex;
+  gap: calc(var(--card-width, 165px) * 0.02);
+  align-items: center;
+}
+.card .card-badges img {
+  width: calc(var(--card-width, 165px) * 0.14);
+  height: auto; /* keep badge aspect ratio */
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* Compact mode tweak (keeps previous behavior) */
+.w-20.h-28 .card .card-name{ font-size: 10px; padding: 2px 6px; }
+
+
+/* ====== Custom Font for Card Names ====== */
+@font-face {
+  font-family: 'KanedaGothicBold';
+  src: url('./Assets/fonts/kaneda-gothic-bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+.font-card-name { font-family: 'KanedaGothicBold', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial; }

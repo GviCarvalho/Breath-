@@ -1,0 +1,26 @@
+# Node / Vite / TypeScript
+node_modules/
+dist/
+.vite/
+*.log
+*.tmp
+*.temp
+*.cache
+
+# Editor/OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Env files
+.env
+.env.*
+
+# Coverage
+coverage/
+
+# Misc
+!.vscode/extensions.json

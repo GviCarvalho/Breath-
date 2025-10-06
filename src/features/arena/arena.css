@@ -1,0 +1,296 @@
+:root{
+  /* Cores */
+  --bg-1:#0d0f14;
+  --bg-2:#151a23;
+  --panel:#0f131a;
+  --line:#2b3342;
+  --accent:#70f0ff;
+  
+  /* Tamanhos responsivos (valores padrão, serão atualizados via JS) */
+  --card-width: 120px;
+  --card-height: 174px;
+  --card-gap: 12px;
+  --lane-gap: 60px;
+  --card-raise: 24px;
+  /* horizontal offset used to mirror deck positions (positive shifts top to right, bottom to left) */
+  --deck-h-offset: 60px;
+  /* EDIT HERE to move both decks at once (change these two values):
+    --deck-offset-x moves horizontally (positive = top->right, bottom->left)
+    --deck-offset-y moves vertically (positive = top->down, bottom->up) */
+  --deck-offset-x: 0px;
+  --deck-offset-y: 0px;
+  --accent2:#ffd36e;
+  --hit:#ff5b6e;
+  --dodge:#7cf59b;
+  --def:#7eb6ff;
+  --text:#dde6ff;
+  --muted:#9fb0d0;
+  --card:#1b2230;
+  --card-ink:#e9f2ff;
+  --glow:0 0 0 2px rgba(112,240,255,.25), 0 0 24px rgba(112,240,255,.18);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+.breath-root{
+  margin:0;
+  background:
+    radial-gradient(1200px 600px at 50% 110%, #1c2433 0%, #10141c 55%, #0a0d13 100%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  color:var(--text);
+  font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji';
+  overflow:hidden;
+}
+
+/* LAYOUT GERAL */
+.hud{
+  position:fixed;
+  top:2vh;
+  /* Align the HUD so its left edge sits at: sidebar left offset (1.75rem) + collapsed sidebar width (56px) + the standard gap (min(12px, 1vh)).
+     This keeps the horizontal spacing between the sidebar and the HUD consistent with the log panel spacing. */
+  left: calc(1.75rem + 56px + min(12px, 1vh));
+  right: 2vh;
+  bottom: 2vh;
+  display:grid;
+  grid-template-columns: minmax(0, 1fr) min(300px, 20vw);
+  grid-template-rows: min(100px, 10vh) 1fr min(160px, 15vh);
+  gap: min(12px, 1vh);
+}
+.panel{background:linear-gradient(180deg, #121825, #0d121d); border:1px solid var(--line); border-radius:14px}
+
+/* TOPO / BASE – BARRAS DO JOGADOR */
+.playerbar{
+  display:flex; align-items:center; gap:12px; padding:10px 20px;
+}
+.playerbar{ position: relative; z-index: 2; }
+.playerbar .avatar{
+  width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#263349,#1a2233);
+  display:grid; place-items:center; border:1px solid var(--line);
+  box-shadow:inset 0 0 24px rgba(255,255,255,.04);
+  font-weight:700; color:#9ec7ff;
+}
+.playerbar .name{font-weight:700; letter-spacing:.2px}
+.playerbar .meta{color:var(--muted); font-size:13px}
+.spacer{flex:1}
+
+/* CRISTAIS DE FÔLEGO */
+.crystals{display:flex; gap:8px}
+.crystal{
+  width:22px; height:22px; border-radius:6px; border:1px solid #1d2736;
+  background: url("../../Assets/art/tokens/Carved Green Yin-Yang Token.png") center/contain no-repeat;
+  background-color:#0f1623;
+  box-shadow:inset 0 0 8px rgba(112,240,255,.15);
+  opacity:.45; transform:translateZ(0);
+}
+.crystal.on{opacity:1}
+
+/* POSTURAS */
+.postures{display:flex; gap:8px}
+.posture{
+  width:28px;height:28px;border-radius:999px;border:1px solid var(--line);
+  display:grid;place-items:center;font-weight:700;color:#cde2ff;background:#121a27
+}
+.posture.active{outline:2px solid rgba(255,211,110,.45); color:#ffe3a3; background:linear-gradient(180deg,#1e2737,#18202e)}
+
+/* RECURSOS LATERAIS */
+.sidebar{ display:none; }
+.resource{
+  width:56px; background:linear-gradient(180deg,#101826,#0b111b); border:1px solid var(--line); border-radius:12px; padding:10px 8px;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+.pip{width:24px; height:24px; border-radius:8px; border:1px solid #253247; background:#0f1623}
+.pip.on.attack{background:linear-gradient(180deg,#3c1a23,#2a0e14); box-shadow:0 0 10px rgba(255,91,110,.35)}
+.pip.on.defense{background:linear-gradient(180deg,#16253e,#0e1a2e); box-shadow:0 0 10px rgba(126,182,255,.35)}
+.pip.on.dodge{background:linear-gradient(180deg,#10311f,#0b2316); box-shadow:0 0 10px rgba(124,245,155,.35)}
+
+/* LOG */
+.log{padding:10px 14px; grid-row:1 / span 3; grid-column:2; overflow:auto}
+.log h3{margin:6px 0 8px; font-size:14px; letter-spacing:.6px; color:#9ec7ff; text-transform:uppercase}
+.log .entry{font-size:14px; color:#bfd1f5; padding:8px 10px; border-left:2px solid #2e3a52; margin:6px 0; background:#0f1521; border-radius:8px}
+.log .entry.hit{border-left-color:var(--hit)}
+.log .entry.block{border-left-color:var(--def)}
+.log .entry.dodge{border-left-color:var(--dodge)}
+
+/* ARENA CENTRAL */
+.board{
+  grid-column:1; grid-row:2; position:relative;
+  background:
+    radial-gradient(900px 280px at 50% 20%, rgba(112,240,255,.05) 0, transparent 60%),
+    radial-gradient(900px 280px at 50% 80%, rgba(255,211,110,.05) 0, transparent 60%),
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 20 20"><path d="M0 10H20M10 0V20" stroke="%232a3244" stroke-width="0.4" opacity="0.45"/></svg>') center/160px 160px repeat,
+    linear-gradient(180deg, #0e141f, #0b1018);
+  border-radius:16px; border:1px solid var(--line);
+  box-shadow:inset 0 40px 120px rgba(112,240,255,.05), inset 0 -40px 120px rgba(255,211,110,.06);
+  overflow:hidden;
+}
+.lane{
+  position:absolute; left:0; right:0; height:46%;
+  display:flex; align-items:center; justify-content:center; gap:var(--lane-gap);
+}
+.lane.top{top:2%}
+.lane.bot{bottom:2%}
+.slot{
+  width: var(--card-width); height: var(--card-height); border-radius:10px; border:1px dashed #3a465d55;
+  display:grid; place-items:center; position:relative;
+  background:rgba(16,22,33,.35);
+  backdrop-filter: blur(4px) saturate(1.1);
+}
+.slot.active{border:1px solid #6d7da055; outline:2px dashed rgba(158,199,255,.25)}
+.slot .fx{
+  pointer-events:none; position:absolute; inset:0; border-radius:14px; opacity:0;
+}
+
+/* Board corner deck slots (inside central board) */
+.board-deck{ position:absolute; pointer-events:none; z-index:50 }
+.board-deck > div{ pointer-events:auto }
+
+/* top-right (opponent) */
+.deck-topright{ top:6%; right:6%; transform: translate(0, 0) rotate(-18deg); }
+
+/* bottom-left (player) */
+.deck-bottomleft{ bottom:6%; left:6%; transform: translate(0, 0) rotate(-18deg); }
+
+/* scale down slightly to visually separate from main hand/deck UI */
+.board-deck .card{ width: calc(var(--card-width) * 0.9); height: calc(var(--card-height) * 0.9); border-radius:8px }
+
+
+/* CARTAS (containers para encaixar CardFront) */
+.card{
+  --raise:0px;
+  width: var(--card-width); height: var(--card-height); border-radius:10px; border:1px solid #263149;
+  background:linear-gradient(180deg, #1a2233, #121a27);
+  color:var(--card-ink);
+  box-shadow: 0 16px 40px rgba(0,0,0,.35);
+  transform: translateY(var(--raise)) rotate(var(--tilt, 0deg));
+  transform-origin: 50% 50%;
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  cursor:pointer; position:relative; overflow:hidden;
+}
+.card:hover{--raise:calc(var(--card-raise) * -1); box-shadow: 0 20px 40px rgba(0,0,0,.45)}
+.card.selected{--raise:calc(var(--card-raise) * -4); filter: drop-shadow(0 0 12px rgba(112,240,255,.35))}
+
+/* MÃO DO JOGADOR (leque) */
+.hand{
+  grid-column:1; grid-row:3;
+  position:relative; display:flex; align-items:flex-start; justify-content:center; gap:var(--card-gap);
+  margin-top: calc(var(--card-height) * -0.2);
+  padding-top:-10px;
+  perspective:1400px;
+  z-index:10;
+}
+.hand .card{transform: translateY(var(--raise)) rotate(var(--rot, 0deg)) translateZ(0)}
+.hand .card:nth-child(1){--rot:-8deg}
+.hand .card:nth-child(2){--rot:-4deg}
+.hand .card:nth-child(4){--rot:4deg}
+.hand .card:nth-child(5){--rot:8deg}
+
+/* MÃO DO OPONENTE (costa) */
+.op-hand{
+  grid-column:1; grid-row:1;
+  display:flex; align-items:flex-end; justify-content:center; gap:1px; padding: calc(var(--card-height) * 0.9) 0 4px;
+  filter:saturate(.9) opacity(.9);
+  position:relative; z-index:10;
+}
+.back{
+  width: var(--card-width); height: var(--card-height); border-radius:10px; border:1px solid #2b3342;
+  background:
+    url("../../Assets/art/cards/CardBack.png") center/cover no-repeat,
+    radial-gradient(50% 80% at 50% 30%, rgba(112,240,255,.12) 0, transparent 70%),
+    linear-gradient(135deg, #1b2332, #131a26);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  transform: rotate(180deg);
+}
+
+/* Opponent deck pinned to top margin (like op-hand) */
+.op-hand .op-deck{ position:absolute; margin-top:0; left:0; z-index:100; }
+.op-hand .op-deck .card{ pointer-events:auto; }
+
+/* CONTROLES */
+.controls{
+  position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+  display:flex; gap:10px;
+}
+.btn{
+  background:linear-gradient(180deg,#1a2332,#131a24); border:1px solid #2a3548; color:#cfe0ff;
+  border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; letter-spacing:.3px;
+}
+.btn.primary{border-color:#2b9fb3; box-shadow:var(--glow)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+
+/* Deck wrapper to ensure full clickable area above overlapping elements */
+.deck-wrap { position: relative; z-index: 100; }
+.deck-wrap .card { pointer-events: auto; }
+
+/* Nudge the opponent deck up to the top margin (now responsive) */
+.deck-wrap.deck-top {
+  align-self: flex-start;
+  margin-right: 0; /* horizontal handled by transform for mirroring */
+  margin-top: clamp(8px, calc(var(--card-height) * 0.55), 64px);
+  /* TOP is positioned using the computed top translations (0px = center of board) */
+  transform: translateX(var(--deck-top-translate-x)) translateY(var(--deck-top-translate-y)) rotate(30deg) translateZ(0);
+}
+.deck-wrap.deck-bottom {
+  margin-left: 0; /* horizontal handled by transform for mirroring */
+  margin-top: clamp(calc(var(--card-height) * -1.8), calc(var(--card-height) * -0.7), -40px);
+  /* BOTTOM uses the computed bottom translations (0px = center of board) */
+  transform: translateX(var(--deck-bottom-translate-x)) translateY(var(--deck-bottom-translate-y)) rotate(-30deg) translateZ(0);
+}
+
+/* FX e animações (iguais ao protótipo) */
+.fx.hit{background:radial-gradient(200px 200px at 50% 50%, rgba(255,91,110,.35), transparent 60%); animation: pop .52s ease}
+.fx.block{background:radial-gradient(200px 200px at 50% 50%, rgba(126,182,255,.35), transparent 60%); animation: pop .52s ease}
+.fx.dodge{background:radial-gradient(200px 200px at 50% 50%, rgba(124,245,155,.35), transparent 60%); animation: pop .52s ease}
+/* Card pile drop effect */
+.pile-drop{ animation: pileFade .18s ease; will-change: opacity }
+@keyframes pileFade { from { opacity: 0 } to { opacity: 1 } }
+
+/* theatrical fall for the inner wrapper so we don't override outer transform */
+.pile-drop .pile-fall { animation: pileFall .46s cubic-bezier(.2,.95,.3,1) both; transform-origin: 50% 50%; }
+@keyframes pileFall {
+  0%   { transform: translateY(-140px) rotate(2deg) scale(1.04); filter: drop-shadow(0 18px 22px rgba(0,0,0,.45)); opacity:.0 }
+  55%  { transform: translateY(0px) rotate(0deg) scale(1);   filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); opacity:1 }
+  75%  { transform: translateY(10px) rotate(-0.6deg) scale(.997) }
+  90%  { transform: translateY(-4px) rotate(0.2deg)  scale(1.002) }
+  100% { transform: translateY(0px) rotate(0deg)     scale(1) }
+}
+/* Counter window visuals */
+.counter-glow{ box-shadow: 0 0 24px rgba(255,211,110,.2), inset 0 0 16px rgba(255,211,110,.12); border-color: #ffd36e55 !important; }
+.slot.counter-open{ box-shadow: 0 0 0 2px rgba(255,211,110,.45), 0 0 24px rgba(255,211,110,.25); animation: counterPulse 1.2s ease-in-out infinite; }
+@keyframes counterPulse{ 0%{ box-shadow: 0 0 0 0 rgba(255,211,110,.45), 0 0 16px rgba(255,211,110,.12) } 50%{ box-shadow: 0 0 0 4px rgba(255,211,110,.25), 0 0 28px rgba(255,211,110,.22) } 100%{ box-shadow: 0 0 0 0 rgba(255,211,110,.45), 0 0 16px rgba(255,211,110,.12) } }
+.counter-badge{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; padding:6px 8px; border-radius:10px; border:1px solid #3b2d0e; background:linear-gradient(180deg,#1b1a12,#151310); color:#ffd36e; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
+.counter-badge span{ text-shadow: 0 0 12px rgba(255,211,110,.35); }
+.counter-bar{ width:120px; height:6px; border-radius:999px; background:#2b2a22; overflow:hidden; border:1px solid #3b2d0e }
+.counter-bar .fill{ height:100%; background:linear-gradient(90deg,#ffd36e,#ffecb0); box-shadow:0 0 8px rgba(255,211,110,.45) inset; transition: width .1s linear }
+@keyframes pop{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
+.attack-tilt{--tilt:-10deg}
+.slide-up{animation: su .35s ease forwards}
+.slide-down{animation: sd .35s ease forwards}
+@keyframes su{to{transform: translateY(min(-140px, -10vh)) scale(1.03)}}
+@keyframes sd{to{transform: translateY(min(140px, 10vh)) scale(1.03)}}
+.shake{animation: shake .3s}
+@keyframes shake{25%{transform: translateX(-6px)}50%{transform: translateX(6px)}75%{transform: translateX(-3px)}100%{transform: translateX(0)}}
+/* ===== HOTFIX: ocupar a viewport e tirar o fundo branco ===== */
+
+/* pinta o fundo global para não aparecer branco atrás */
+html, body, #root {
+  height: 100%;
+  background:
+    radial-gradient(1200px 600px at 50% 110%, #1c2433 0%, #10141c 55%, #0a0d13 100%),
+    linear-gradient(180deg, #0d0f14, #151a23) !important;
+}
+
+/* garante que a raiz da arena ocupe a altura toda */
+.breath-root {
+  min-height: 100vh;
+}
+
+/* faz a HUD ficar fixa na tela, mas deixando espaço para o header do app.
+   Ajuste o valor do 'top' conforme a altura do seu header (64–88px, por aí). */
+/* override previous positioning for full-viewport layout */
+/* handled above with fixed + sidebar offset */
+
+/* opcional: se aparecer scroll lateral por 1–2px, segura aqui */
+body { overflow: hidden; }
+
+
+
+

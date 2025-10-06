@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Breath! — Deckbuilder v1 (21 cartas)</title>
+  <style>
+    :root{
+      --bg:#0b0e16;--panel:#0f1424;--elev:#0c1220;--muted:#8ca0c9;--text:#eaf0ff;
+      --brand:#7cd0ff;--ok:#77e0a3;--warn:#ffd37c;--bad:#ff7b7b;
+      --attack1:#ffb199; --attack2:#ff7f50;
+      --def1:#9ed8ff; --def2:#72d5ff;
+      --dodge1:#b7ffb0; --dodge2:#6ee7a1;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:radial-gradient(80% 80% at 50% 0%,#0f1530 0%,#0b0e16 60%);color:var(--text);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    header{position:sticky;top:0;z-index:5;backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(10,14,24,.9),rgba(10,14,24,.6));border-bottom:1px solid #1e2741}
+    header .wrap{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:14px 18px}
+    h1{font-size:18px;margin:0;letter-spacing:.3px}
+    .pill{padding:6px 10px;border-radius:999px;background:#121a2f;border:1px solid #1c2745;color:var(--muted);font-size:12px}
+
+    main{max-width:1280px;margin:18px auto;padding:0 16px;display:grid;grid-template-columns:1.25fr .9fr;gap:16px}
+    .card{background:var(--panel);border:1px solid #1b2441;border-radius:16px;box-shadow:0 10px 28px rgba(0,0,0,.25);overflow:hidden}
+    .card h2{margin:0;padding:12px 14px;border-bottom:1px solid #1b2441;font-size:15px;background:linear-gradient(180deg,#121830,#0e1324);display:flex;align-items:center;justify-content:space-between}
+    .content{padding:12px}
+
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .toolbar input,.toolbar select{background:#0e1426;border:1px solid #243255;color:var(--text);border-radius:12px;padding:10px}
+    .toolbar .btn{background:linear-gradient(180deg,#1a88e8,#1268b5);border:none;color:#fff;border-radius:12px;padding:10px 12px;font-weight:600;cursor:pointer}
+    .btn.secondary{background:#162039;border:1px solid #243255;color:#d9e5ff}
+    .btn.ghost{background:transparent;border:1px dashed #2a3b6b;color:#c8d6ff}
+
+    /* ======= CARD VISUAL ======= */
+    .catalog{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-height:560px;overflow:auto;padding-bottom:6px}
+    .c3d{perspective:1000px}
+    .tcg{width:100%;aspect-ratio: 5 / 7;border-radius:16px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .2s ease, box-shadow .2s ease}
+    .tcg:hover{transform:translateY(-4px) rotateX(2deg) rotateY(2deg);box-shadow:0 20px 40px rgba(0,0,0,.35)}
+    .tcg .frame{position:absolute;inset:0;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.1)}
+    .tcg .art{position:absolute;inset:6px 6px 48px;border-radius:12px;background:#0a0f1d;overflow:hidden;display:grid;place-items:center}
+    .tcg.attack .art{background:linear-gradient(180deg,var(--attack1),var(--attack2));mix-blend-mode:screen;filter:saturate(.9)}
+    .tcg.defense .art{background:linear-gradient(180deg,var(--def1),var(--def2));mix-blend-mode:screen}
+    .tcg.dodge .art{background:linear-gradient(180deg,var(--dodge1),var(--dodge2));mix-blend-mode:screen}
+    .tcg .title{position:absolute;left:10px;right:10px;bottom:36px;font-weight:700;font-size:12px;text-shadow:0 1px 0 rgba(0,0,0,.6)}
+    .tcg .meta{position:absolute;left:8px;right:8px;bottom:6px;display:flex;justify-content:space-between;gap:6px;font-size:11px;color:#d7e4ff}
+    .pip{display:inline-grid;grid-auto-flow:column;gap:6px}
+    .pip .dot{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:800;color:#06122a}
+    .pip.req .dot{background:#ffd37c;border:1px solid rgba(0,0,0,.25)}
+    .pip.tgt .dot{background:#ff9aa2;border:1px solid rgba(0,0,0,.25)}
+    .pip.fin .dot{background:#9cffb1;border:1px solid rgba(0,0,0,.25)}
+    .badgeType{position:absolute;top:6px;left:6px;padding:4px 8px;border-radius:10px;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);font-size:11px}
+    .idxTag{position:absolute;top:6px;right:6px;padding:4px 8px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);font-size:11px}
+
+    /* Deck list as cards */
+    .deck{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-height:640px;overflow:auto}
+    .deckItem{position:relative}
+    .controls{position:absolute;right:6px;bottom:6px;display:flex;gap:6px}
+    .controls button{width:28px;height:28px;border-radius:10px;border:1px solid #2a3b6e;background:#121a2f;color:#dfe8ff;cursor:pointer}
+
+    .footer{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:10px}
+    .seedBox{background:#0e1426;border:1px solid #243255;border-radius:12px;padding:10px;color:#d9e5ff;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+
+    .empty{padding:20px;text-align:center;color:var(--muted);border:1px dashed #2a3b6e;border-radius:14px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Breath! — Decks</h1>
+    <nav class="row" style="gap:8px">
+      <button class="btn secondary" id="navCollection">📚 Coleção</button>
+      <button class="btn" id="navBuilder">🛠️ Criar/Editar</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ==== COLEÇÃO DE DECKS ==== -->
+  <section class="card fadeIn" id="viewCollection">
+    <h2>Coleção de Decks (local)</h2>
+    <div class="content">
+      <div class="toolbar">
+        <button class="btn" id="newDeck">＋ Novo Deck</button>
+        <button class="btn secondary" id="importDeckSeed">Importar Seed → Coleção</button>
+        <button class="btn ghost" id="exportDecks">Exportar JSON</button>
+        <input id="searchDecks" placeholder="Buscar por nome ou seed…" style="min-width:260px"/>
+      </div>
+      <div id="deckGrid" class="catalog" style="grid-template-columns:repeat(4,1fr);max-height: none"></div>
+    </div>
+  </section>
+
+  <!-- ==== DECKBUILDER ==== -->
+  <section class="card fadeIn" id="viewBuilder" style="display:none">
+    <h2>
+      Meu Kata (21 cartas)
+      <div class="row" style="gap:8px">
+        <button class="btn secondary" id="saveToCollection">💾 Salvar na Coleção</button>
+        <input id="deckName" placeholder="Nome do deck… (ex: Kata do Iniciante)" style="background:#0e1426;border:1px solid #243255;color:#eaf0ff;border-radius:12px;padding:8px 10px"/>
+      </div>
+    </h2>
+    <div class="content">
+      <div class="toolbar">
+        <input id="search" placeholder="Buscar cartas (ex: Atk A→B, Def B×C, Dodge →A)" style="min-width:260px"/>
+        <select id="typeFilter">
+          <option value="all">Tipo: Todos</option>
+          <option value="attack">Ataque</option>
+          <option value="defense">Defesa</option>
+          <option value="dodge">Esquiva</option>
+        </select>
+        <select id="reqFilter">
+          <option value="all">Requer: A/B/C</option>
+          <option value="0">Requer A</option>
+          <option value="1">Requer B</option>
+          <option value="2">Requer C</option>
+        </select>
+        <select id="tgtFilter">
+          <option value="all">Alvo: A/B/C</option>
+          <option value="0">Alvo A</option>
+          <option value="1">Alvo B</option>
+          <option value="2">Alvo C</option>
+        </select>
+        <select id="finFilter">
+          <option value="all">Final: A/B/C</option>
+          <option value="0">Final A</option>
+          <option value="1">Final B</option>
+          <option value="2">Final C</option>
+        </select>
+        <button class="btn" id="clearFilters">Limpar filtros</button>
+      </div>
+      <div class="catalog" id="catalog"></div>
+
+      <h2 style="margin-top:12px">Lista do Deck</h2>
+      <div class="content">
+        <div id="deck" class="deck"></div>
+        <div class="empty" id="emptyDeck">Nenhuma carta ainda. Clique no catálogo para adicionar. (Máx. 21)</div>
+        <div class="footer">
+          <div class="seedBox" id="seedBox">Seed v1: —</div>
+          <div class="row">
+            <button class="btn secondary" id="importSeed">Importar Seed</button>
+            <button class="btn ghost" id="randomize">Preencher Aleatório</button>
+            <button class="btn" id="clearDeck">Limpar</button>
+            <button class="btn" id="copySeed">Copiar Seed</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+// ===============================
+// Modelo de Cartas (57) + helpers
+// ===============================
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"; // 64
+const PNAME = ["A","B","C"];
+function idxToChar(i){ return ALPHABET[i]; }
+function charToIdx(c){ return ALPHABET.indexOf(c); }
+
+function buildAllCards(){
+  const cards=[];
+  // Ataques 0..26 (3x3x3)
+  for(let i=0;i<=26;i++){
+    const req = Math.floor(i/9);
+    const rem = i%9; const tgt=Math.floor(rem/3); const fin=rem%3;
+    cards.push({idx:i, ch:idxToChar(i), type:"attack", requires:req, target:tgt, final:fin});
+  }
+  // Defesas 27..53
+  for(let i=27;i<=53;i++){
+    const base=i-27; const req=Math.floor(base/9); const rem=base%9; const tgt=Math.floor(rem/3); const fin=rem%3;
+    cards.push({idx:i, ch:idxToChar(i), type:"defense", requires:req, target:tgt, final:fin});
+  }
+  // Esquivas 54..56
+  for(let i=54;i<=56;i++){
+    const fin=i-54; cards.push({idx:i, ch:idxToChar(i), type:"dodge", requires:null, target:null, final:fin});
+  }
+  return cards;
+}
+const ALL = buildAllCards();
+
+function cardName(c){
+  if(c.type==='attack') return `Atk ${PNAME[c.requires]}→${PNAME[c.target]} · fin ${PNAME[c.final]}`;
+  if(c.type==='defense') return `Def ${PNAME[c.requires]}×${PNAME[c.target]} · fin ${PNAME[c.final]}`;
+  return `Dodge →${PNAME[c.final]}`;
+}
+
+// ===============================
+// UI — Catálogo com cartas visuais
+// ===============================
+const els={
+  catalog:document.getElementById('catalog'),
+  deck:document.getElementById('deck'),
+  emptyDeck:document.getElementById('emptyDeck'),
+  seedBox:document.getElementById('seedBox'),
+  search:document.getElementById('search'),
+  typeFilter:document.getElementById('typeFilter'),
+  reqFilter:document.getElementById('reqFilter'),
+  tgtFilter:document.getElementById('tgtFilter'),
+  finFilter:document.getElementById('finFilter'),
+  clearFilters:document.getElementById('clearFilters'),
+  clearDeck:document.getElementById('clearDeck'),
+  randomize:document.getElementById('randomize'),
+  copySeed:document.getElementById('copySeed'),
+  importSeed:document.getElementById('importSeed'),
+};
+
+function renderCatalog(){
+  const q=(els.search.value||'').toLowerCase();
+  const tf=els.typeFilter.value, rf=els.reqFilter.value, gf=els.tgtFilter.value, ff=els.finFilter.value;
+  const matches=ALL.filter(c=>{
+    if(tf!=='all' && c.type!==tf) return false;
+    if(rf!=='all' && c.requires!==Number(rf)) return false;
+    if(gf!=='all'){
+      if(c.type==='dodge') return false;
+      if(c.target!==Number(gf)) return false;
+    }
+    if(ff!=='all' && c.final!==Number(ff)) return false;
+    const text = `${cardName(c)} ${c.ch}`.toLowerCase();
+    return text.includes(q);
+  });
+
+  els.catalog.innerHTML='';
+  for(const c of matches){ els.catalog.appendChild(renderCard(c, ()=>addToDeck(c))); }
+}
+
+function pipDots(kind, a){
+  return `<div class="pip ${kind}">` + a.map(x=>`<span class="dot">${PNAME[x]}</span>`).join('') + `</div>`;
+}
+
+function renderCard(c, onClick){
+  const host=document.createElement('div'); host.className='c3d';
+  const el=document.createElement('div'); el.className=`tcg ${c.type}`; el.title='Clique para adicionar ao deck';
+  el.innerHTML = `
+    <div class="frame"></div>
+    <div class="art"></div>
+    <div class="badgeType">${c.type.toUpperCase()}</div>
+    <div class="idxTag">#${c.idx} · ${c.ch}</div>
+    <div class="title">${cardName(c)}</div>
+    <div class="meta">
+      ${c.type!=='dodge' ? pipDots('req',[c.requires]) : '<span></span>'}
+      ${c.type!=='dodge' ? pipDots('tgt',[c.target]) : '<span></span>'}
+      ${pipDots('fin',[c.final])}
+    </div>`;
+  el.addEventListener('click', onClick);
+  host.appendChild(el);
+  return host;
+}
+
+els.search.addEventListener('input',renderCatalog);
+[els.typeFilter,els.reqFilter,els.tgtFilter,els.finFilter].forEach(x=>x.addEventListener('change',renderCatalog));
+els.clearFilters.addEventListener('click',()=>{
+  els.search.value=''; els.typeFilter.value='all'; els.reqFilter.value='all'; els.tgtFilter.value='all'; els.finFilter.value='all'; renderCatalog();
+});
+
+// ===============================
+// Deck (cartas visuais) + seed
+// ===============================
+const deck=[]; // indices 0..56 — máx 21
+
+function addToDeck(card){
+  if(deck.length>=21){ toast("Deck cheio (21)."); return; }
+  deck.push(card.idx); renderDeck();
+}
+function removeAt(i){ deck.splice(i,1); renderDeck(); }
+function duplicateAt(i){ if(deck.length>=21) return; deck.splice(i+1,0,deck[i]); renderDeck(); }
+
+function renderDeck(){
+  els.deck.innerHTML='';
+  els.emptyDeck.style.display = deck.length? 'none':'block';
+  deck.forEach((idx,i)=>{
+    const c = ALL[idx];
+    const host=document.createElement('div'); host.className='deckItem c3d';
+    const cardEl=document.createElement('div'); cardEl.className=`tcg ${c.type}`;
+    cardEl.innerHTML = `
+      <div class=\"frame\"></div>
+      <div class=\"art\"></div>
+      <div class=\"badgeType\">${c.type.toUpperCase()}</div>
+      <div class=\"idxTag\">#${c.idx} · ${c.ch}</div>
+      <div class=\"title\">${cardName(c)}</div>
+      <div class=\"meta\">
+        ${c.type!=='dodge' ? pipDots('req',[c.requires]) : '<span></span>'}
+        ${c.type!=='dodge' ? pipDots('tgt',[c.target]) : '<span></span>'}
+        ${pipDots('fin',[c.final])}
+      </div>`;
+    const controls=document.createElement('div'); controls.className='controls';
+    controls.innerHTML=`<button title="Duplicar">＋</button><button title="Remover">✕</button>`;
+    controls.children[0].addEventListener('click',()=>duplicateAt(i));
+    controls.children[1].addEventListener('click',()=>removeAt(i));
+    host.appendChild(cardEl); host.appendChild(controls);
+    els.deck.appendChild(host);
+  });
+  updateSeedBox();
+}
+
+function checksumFor(indices){ let sum=0; for(const i of indices) sum+=i; return sum % 64; }
+function buildSeedV1(){ if(deck.length!==21) return null; const payload = deck.map(i=>idxToChar(i)).join(''); const chk = idxToChar(checksumFor(deck)); return `v1.${payload}${chk}`; }
+function updateSeedBox(){ const left = 21 - deck.length; const seed = buildSeedV1(); els.seedBox.textContent = seed ? `Seed v1: ${seed}` : `Seed v1: —  (faltam ${left} carta(s))`; }
+
+els.clearDeck.addEventListener('click',()=>{ deck.length=0; renderDeck(); });
+els.randomize.addEventListener('click',()=>{
+  deck.length=0; while(deck.length<21){ deck.push(Math.floor(Math.random()*ALL.length)); } renderDeck();
+});
+els.copySeed.addEventListener('click',async()=>{
+  const s = buildSeedV1(); if(!s){ toast('Complete 21 cartas antes.'); return; }
+  try{ await navigator.clipboard.writeText(s); toast('Seed copiada ✔'); }catch(e){ toast('Não consegui copiar :('); }
+});
+els.importSeed.addEventListener('click',()=>{
+  const s=prompt('Cole a seed v1 para importar:'); if(!s) return;
+  try{
+    let payload=s.trim(); if(payload.startsWith('v1.')) payload=payload.slice(3);
+    const body=payload.slice(0,-1);
+    const arr=[]; for(const ch of body){ const k=charToIdx(ch); if(k<0||k>56) throw new Error('char inválido: '+ch); arr.push(k); }
+    if(arr.length!==21) throw new Error('seed precisa ter 21 cartas, veio '+arr.length);
+    deck.length=0; deck.push(...arr); renderDeck(); toast('Seed importada.');
+  }catch(e){ alert('Erro ao importar: '+e.message); }
+});
+
+// ===============================
+// Toast
+// ===============================
+function toast(msg){
+  const t=document.createElement('div');
+  t.textContent=msg; t.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#121a2f;border:1px solid #2a3b6e;color:#dfe8ff;padding:10px 14px;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.4);z-index:50;opacity:0';
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>{t.style.transition='opacity .18s ease, transform .18s ease'; t.style.opacity='1';});
+  setTimeout(()=>{t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(6px)'; setTimeout(()=>t.remove(),220);},1600);
+}
+
+// ===============================
+// Coleção: localStorage + UI
+// ===============================
+const STORAGE_KEY = 'breath_deck_collection_v1';
+const DEFAULT_DECKS = [
+  { id: cryptoRandomId(), name: 'Kata do Iniciante', seed: 'v1.ERServ234ERServ234ERSB' },
+  { id: cryptoRandomId(), name: 'Kata Supremo', seed: 'v1.ERSfst234ERSque234DYY5' },
+  { id: cryptoRandomId(), name: 'Pressão (Forma 1)', seed: 'v1.ERSERSeErRvS3RS4SE2ERg' },
+  { id: cryptoRandomId(), name: 'Muralha (Forma 3)', seed: 'v1.eErRvSeErRvS234eErRvSC' },
+  { id: cryptoRandomId(), name: 'Fluidez (Forma 4)', seed: 'v1.2E3R4S2E3R4S2E3R4Sfsts7' },
+  { id: cryptoRandomId(), name: 'Ruptura (Forma 4)', seed: 'v1.ERS234ERS234ERS234q' },
+];
+
+function cryptoRandomId(){ return 'd'+Math.random().toString(36).slice(2,9); }
+function loadCollection(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw){ localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DECKS)); return [...DEFAULT_DECKS]; }
+  try{ const arr = JSON.parse(raw); return Array.isArray(arr)? arr: [...DEFAULT_DECKS]; }catch{ return [...DEFAULT_DECKS]; }
+}
+function saveCollection(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+
+let collection = loadCollection();
+
+const deckGrid = document.getElementById('deckGrid');
+const searchDecks = document.getElementById('searchDecks');
+const newDeckBtn = document.getElementById('newDeck');
+const importDeckSeedBtn = document.getElementById('importDeckSeed');
+const exportDecksBtn = document.getElementById('exportDecks');
+const navCollection = document.getElementById('navCollection');
+const navBuilder = document.getElementById('navBuilder');
+const viewCollection = document.getElementById('viewCollection');
+const viewBuilder = document.getElementById('viewBuilder');
+const deckNameInput = document.getElementById('deckName');
+const saveToCollectionBtn = document.getElementById('saveToCollection');
+
+function switchView(target){
+  if(target==='collection'){ viewCollection.style.display='block'; viewBuilder.style.display='none'; }
+  else { viewCollection.style.display='none'; viewBuilder.style.display='block'; }
+}
+
+navCollection.addEventListener('click',()=>switchView('collection'));
+navBuilder.addEventListener('click',()=>switchView('builder'));
+
+function renderCollection(){
+  const q = (searchDecks.value||'').toLowerCase();
+  deckGrid.innerHTML = '';
+  const list = collection.filter(d=> (d.name.toLowerCase().includes(q) || (d.seed||'').toLowerCase().includes(q)) );
+  if(list.length===0){
+    const empty=document.createElement('div');
+    empty.className='empty'; empty.textContent='Nenhum deck na coleção. Clique em “Novo Deck” para criar ou importe uma seed.';
+    deckGrid.appendChild(empty); return;
+  }
+  for(const d of list){ deckGrid.appendChild(renderDeckCard(d)); }
+}
+
+function renderDeckCard(d){
+  const host=document.createElement('div'); host.className='c3d';
+  const el=document.createElement('div'); el.className='tcg';
+  el.innerHTML = `
+    <div class="frame"></div>
+    <div class="art" style="background:linear-gradient(180deg,#6c8cff,#374b9a)"></div>
+    <div class="badgeType">DECK</div>
+    <div class="idxTag">21 cartas</div>
+    <div class="title">${escapeHtml(d.name)}</div>
+    <div class="meta">
+      <div class="pip fin"><span class="dot">A</span><span class="dot">B</span><span class="dot">C</span></div>
+      <span style="font-size:10px;opacity:.8">seed… ${escapeHtml(d.seed.slice(0,14))}…</span>
+    </div>`;
+  el.addEventListener('click',()=>{
+    // carregar no builder
+    try{ importSeedToDeck(d.seed); deckNameInput.value=d.name; switchView('builder'); toast('Deck carregado no builder.'); }catch(e){ alert('Seed inválida: '+e.message); }
+  });
+  // ações rápidas
+  const actions=document.createElement('div'); actions.className='controls';
+  const btnCopy=document.createElement('button'); btnCopy.textContent='📋'; btnCopy.title='Copiar seed'; btnCopy.onclick=async(e)=>{ e.stopPropagation(); await navigator.clipboard.writeText(d.seed); toast('Seed copiada'); };
+  const btnDelete=document.createElement('button'); btnDelete.textContent='🗑️'; btnDelete.title='Excluir'; btnDelete.onclick=(e)=>{ e.stopPropagation(); if(confirm('Excluir deck?')){ collection=collection.filter(x=>x.id!==d.id); saveCollection(collection); renderCollection(); } };
+  const btnDuplicate=document.createElement('button'); btnDuplicate.textContent='⎘'; btnDuplicate.title='Duplicar'; btnDuplicate.onclick=(e)=>{ e.stopPropagation(); const clone={...d,id:cryptoRandomId(), name:d.name+' (cópia)'}; collection.unshift(clone); saveCollection(collection); renderCollection(); };
+  actions.append(btnCopy, btnDuplicate, btnDelete);
+  host.appendChild(el); host.appendChild(actions);
+  return host;
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"]+/g, m=>({"&":"&amp;","<":"&lt;",
+  ">":"&gt;","\"":"&quot;"})[m]); }
+
+searchDecks.addEventListener('input',renderCollection);
+newDeckBtn.addEventListener('click',()=>{ deck.length=0; deckNameInput.value=''; switchView('builder'); renderDeck(); toast('Novo deck iniciado.'); });
+importDeckSeedBtn.addEventListener('click',()=>{
+  const name = prompt('Nome do deck:'); if(!name) return;
+  const seed = prompt('Cole a seed v1:'); if(!seed) return;
+  try{ importSeedToDeck(seed); const item={id:cryptoRandomId(), name, seed}; collection.unshift(item); saveCollection(collection); renderCollection(); switchView('collection'); toast('Deck importado para a coleção.'); }
+  catch(e){ alert('Seed inválida: '+e.message); }
+});
+exportDecksBtn.addEventListener('click',()=>{
+  const blob = new Blob([JSON.stringify(collection,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='breath_decks.json'; a.click(); URL.revokeObjectURL(url);
+});
+
+saveToCollectionBtn.addEventListener('click',()=>{
+  const seed = buildSeedV1(); if(!seed){ alert('Complete 21 cartas para salvar.'); return; }
+  const name = (deckNameInput.value||'Meu Deck');
+  const item = { id: cryptoRandomId(), name, seed };
+  collection.unshift(item); saveCollection(collection); renderCollection(); switchView('collection'); toast('Deck salvo na coleção.');
+});
+
+function importSeedToDeck(s){
+  let payload=s.trim(); if(payload.startsWith('v1.')) payload=payload.slice(3);
+  const body=payload.slice(0,-1); const arr=[]; for(const ch of body){ const k=charToIdx(ch); if(k<0||k>56) throw new Error('char inválido: '+ch); arr.push(k); }
+  if(arr.length!==21) throw new Error('seed precisa ter 21 cartas, veio '+arr.length);
+  deck.length=0; deck.push(...arr); renderDeck();
+}
+
+// Init
+switchView('collection');
+renderCollection();
+renderCatalog();
+renderDeck();
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+// tests/predictor.test.js
+import { createPredictor } from "../src/ai/predictor.js";
+
+function approxSum(p, eps = 1e-6) {
+  const s = p.attack + p.defense + p.dodge + p.draw;
+  expect(Math.abs(s - 1)).toBeLessThan(eps);
+}
+
+test("predictor initializes with smooth priors", () => {
+  const ai = createPredictor();
+  const p = ai.predict({ posture: 0, breath: 3 });
+  approxSum(p);
+  for (const k of Object.keys(p)) expect(p[k]).toBeGreaterThan(0);
+});
+
+test("observe attack increases future attack probability in same posture", () => {
+  const ai = createPredictor({ decay: 0.95, alpha: 0.3 });
+  // player em A ataca três vezes
+  for (let i = 0; i < 3; i++) ai.observe({ posture: 0, breath: 3, action: "attack" });
+  const pA = ai.predict({ posture: 0, breath: 3 });
+  const pB = ai.predict({ posture: 1, breath: 3 });
+  expect(pA.attack).toBeGreaterThan(pB.attack); // A favorece ataque
+});
+
+test("breath == 0 forces draw", () => {
+  const ai = createPredictor();
+  const p = ai.predict({ posture: 2, breath: 0 });
+  expect(p.draw).toBeCloseTo(1, 5);
+});
+
+test("chooseAction returns the best EV option among provided", () => {
+  const ai = createPredictor();
+  // simula que o player tem tendência a atacar
+  for (let i = 0; i < 5; i++) ai.observe({ posture: 1, breath: 3, action: "attack" });
+  const res = ai.chooseAction({ posture: 1, breath: 3, myActionOptions: ["attack","defense","dodge","draw"] });
+  expect(["attack","defense","dodge","draw"]).toContain(res.pick);
+  expect(res.scored.length).toBe(4);
+});
+
+test("snapshot/reset carry learning across matches (MD3)", () => {
+  const ai1 = createPredictor();
+  ai1.observe({ posture: 0, breath: 3, action: "dodge" });
+  const prior = ai1.snapshot();
+  const ai2 = createPredictor();
+  ai2.reset(prior);
+  // deve lembrar do padrão de esquiva
+  const p = ai2.predict({ posture: 0, breath: 3 });
+  expect(p.dodge).toBeGreaterThan(0.24); // valor arbitrário > inicial
+});

@@ -1,0 +1,170 @@
+.deckbuilder-theme {
+  --db-bg: radial-gradient(80% 80% at 50% 0%, #0f1530 0%, #0b0e16 60%);
+  --db-panel: #0f1424;
+  --db-elev: #0c1220;
+  --db-muted: #8ca0c9;
+  --db-text: #eaf0ff;
+  --db-border: #1b2441;
+  color: var(--db-text);
+}
+
+/* Ensure text inside the deckbuilder theme is readable on dark backgrounds.
+   Use inherit rules for inner elements so Tailwind utility classes that set
+   color to lighter/dimmer shades still work, while preventing accidental
+   black rendering from global rules. */
+.deckbuilder-theme, .deckbuilder-theme * {
+  color: inherit;
+}
+.deckbuilder-theme { color: var(--db-text) !important; }
+
+.deckbuilder-theme .text-slate-400 { color: rgba(234,240,255,0.6) !important; }
+.deckbuilder-theme .text-slate-300 { color: rgba(234,240,255,0.75) !important; }
+
+.deckbuilder-theme .db-wrap {
+  background: var(--db-bg);
+}
+
+.deckbuilder-theme .db-header {
+  background: linear-gradient(180deg, rgba(10,14,24,.9), rgba(10,14,24,.6));
+  border: 1px solid #1e2741;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.25);
+}
+
+.deckbuilder-theme .db-card {
+  background: var(--db-panel);
+  border: 1px solid var(--db-border);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.25);
+}
+
+/* Make the TCG card background transparent inside the deckbuilder/catalog so
+   the artwork appears flush with the page without a solid dark rectangle behind it. */
+.deckbuilder-theme .tcg-card {
+  background: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.deckbuilder-theme .db-empty-cta {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+}
+
+.deckbuilder-theme input {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.04);
+  color: var(--db-text);
+}
+
+.deckbuilder-theme .db-card .db-tilt:hover {
+  transform: translateY(-6px) rotateX(3deg) rotateY(3deg);
+  box-shadow: 0 28px 48px rgba(0,0,0,.45);
+}
+
+/* Portal menu animations */
+.deckbuilder-theme .portal-menu { transform-origin: top right; }
+.deckbuilder-theme .portal-menu.enter { animation: menu-in .12s ease both; }
+.deckbuilder-theme .portal-menu.exit { animation: menu-out .12s ease both; }
+
+/* Global rules for portal menu (portal is outside .deckbuilder-theme when appended to document.body) */
+.portal-menu { transform-origin: top right; }
+.portal-menu.enter { animation: menu-in .12s ease both; }
+.portal-menu.exit { animation: menu-out .12s ease both; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes menu-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-6px) scale(.98); } }
+
+.deckbuilder-theme .db-section-title {
+  background: linear-gradient(180deg, #121830, #0e1324);
+  border-bottom: 1px solid var(--db-border);
+}
+
+.deckbuilder-theme .db-content {
+  padding: 12px;
+}
+
+.deckbuilder-theme .db-pill {
+  background: #162039;
+  border: 1px solid #243255;
+  color: #d9e5ff;
+  border-radius: 12px;
+}
+
+.deckbuilder-theme .db-pill.active {
+  background: linear-gradient(180deg,#1a88e8,#1268b5);
+  color: #fff;
+  border-color: transparent;
+}
+
+.deckbuilder-theme .db-seedbox {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  background:#0e1426;
+  border:1px solid #243255;
+  color:#d9e5ff;
+  border-radius:12px;
+  padding:8px 10px;
+}
+
+.deckbuilder-theme .db-3d { perspective: 1000px; }
+.deckbuilder-theme .db-tilt {
+  transform-style: preserve-3d;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.deckbuilder-theme .db-tilt:hover {
+  transform: translateY(-4px) rotateX(2deg) rotateY(2deg);
+  box-shadow: 0 20px 40px rgba(0,0,0,.35);
+}
+
+.deckbuilder-theme .db-scroll::-webkit-scrollbar { width: 10px; }
+.deckbuilder-theme .db-scroll::-webkit-scrollbar-thumb { background: #1e2741; border-radius: 8px; }
+
+/* Drop target visual when dragging cards/slots */
+.deckbuilder-theme .drop-target {
+  outline: 2px dashed rgba(58,153,255,0.9);
+  outline-offset: 4px;
+  background: linear-gradient(90deg, rgba(58,153,255,0.04), transparent);
+}
+
+.deckbuilder-theme .col-span-3 .drop-target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* small spin for the density toggle */
+.deckbuilder-theme .spin { animation: toggle-spin .7s ease; }
+@keyframes toggle-spin { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.05); } 100% { transform: rotate(360deg) scale(1); } }
+
+/* highlight newly added card slot */
+.deckbuilder-theme .just-added { animation: just-added-pop .7s cubic-bezier(.2,.9,.3,1); }
+@keyframes just-added-pop { 0% { transform: scale(.8) translateY(6px); opacity: 0; } 60% { transform: scale(1.05) translateY(-4px); opacity: 1; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+
+/* subtle pulse when a drop-target is active */
+.deckbuilder-theme .drop-target { animation: drop-pulse 1s ease-in-out infinite; }
+@keyframes drop-pulse { 0% { box-shadow: 0 0 0 0 rgba(58,153,255,0.08); } 70% { box-shadow: 0 0 0 10px rgba(58,153,255,0); } 100% { box-shadow: 0 0 0 0 rgba(58,153,255,0); } }
+
+/* dim the original element while dragging to emphasize the drag-preview */
+.deckbuilder-theme .dragging-source { opacity: 1; transform: scale(.98); filter: none; transition: transform .12s ease; }
+/* Ensure no browser or other rule can force transparency while dragging - enforce on descendants too */
+.deckbuilder-theme .dragging-source,
+.deckbuilder-theme .dragging-source * {
+  opacity: 1 !important;
+}
+
+/* Use native grab/grabbing cursors for draggable cards */
+.deckbuilder-theme button[draggable], .deckbuilder-theme .db-3d { cursor: grab; }
+.deckbuilder-theme button[draggable]:active, .deckbuilder-theme button[draggable].dragging-source { cursor: grabbing; }
+
+/* Adicionando estilos para o cursor ao passar e segurar cartas */
+.deckbuilder-theme .card {
+  cursor: grab;
+}
+
+.deckbuilder-theme .card:active {
+  cursor: grabbing;
+}
+
+/* Global body class while dragging: hide native cursor so we can render a custom hand+card preview.
+  We still keep pointer-events available for interactive elements when not dragging. */
+.is-dragging, .is-dragging * { cursor: none !important; }
+

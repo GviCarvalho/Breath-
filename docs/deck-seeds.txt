@@ -1,0 +1,71 @@
+Sistema de Seeds para Decks — Nova Especificação
+
+Resumo
+- Cada carta é mapeada para um índice inteiro fixo.
+- Esse índice é convertido em um caractere único usando um alfabeto Base64 URL-safe.
+- Uma seed é simplesmente a sequência de caracteres que representam as cartas na ordem em que compõem o deck.
+- Opcionalmente, a seed pode conter prefixo de versão (ex: "v1.") e um caractere de checksum no final.
+
+Alfabeto
+Usamos Base64 URL-safe (64 símbolos, todos seguros para URL/QR):
+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_
+
+Indexação das cartas
+Para P posturas (atualmente P=3: A=0, B=1, C=2):
+
+1) Ataques
+  - Campos: requires, target, final
+  - Fórmula do índice base: requires*9 + target*3 + final  (0..26)
+  - Faixa: [0..26]
+
+2) Defesas
+  - Campos: requires, target, final
+  - Fórmula do índice base: requires*9 + target*3 + final
+  - Índice final = 27 + índice base  (27..53)
+  - Faixa: [27..53]
+
+3) Esquivas
+  - Campo: final (postura final)
+  - Índice = 54 + final  (54..56)
+  - Faixa: [54..56]
+
+Total = 57 tipos de cartas únicos.
+
+Codificação de uma seed
+- Converta cada carta em seu índice (0..56).
+- Converta o índice em um caractere usando o alfabeto.
+- Concatene os caracteres na ordem desejada do deck.
+
+Exemplo simples: deck de 3 cartas → seed com 3 caracteres.
+
+Checksum (opcional)
+- Calcule a soma de todos os índices das cartas.
+- Tire o resultado módulo 64.
+- Converta esse valor em caractere do alfabeto.
+- Anexe ao final da seed.
+- Assim, erros de digitação podem ser detectados.
+
+Versão (opcional)
+- Prefixe "v1." ou similar antes do payload da seed.
+- Permite evoluir regras de mapeamento no futuro.
+
+Exemplo completo
+Deck: 
+  1) Ataque requires=B, target=C, final=B → índice 16 → 'Q'
+  2) Ataque requires=A, target=B, final=A → índice 3 → 'D'
+  3) Defesa requires=C, target=B, final=C → índice base 23, índice final 50 → 'y'
+
+Payload: "QDy"
+Checksum: (16+3+50) mod 64 = 69 mod 64 = 5 → 'F'
+
+Seed final: "v1.QDyF"
+
+Decodificação
+- Ler prefixo (se houver).
+- Mapear cada caractere para índice (0..63).
+- Se 0..26 → ataque (decompor requires, target, final).
+- Se 27..53 → defesa (subtrair 27 para base, depois decompor).
+- Se 54..56 → esquiva (final = índice-54).
+- Validar checksum (se presente).
+
+Arquivo gerado: docs/deck-seeds.txt

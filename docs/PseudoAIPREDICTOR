@@ -1,0 +1,142 @@
+// predictor.js
+export function createPredictor(opts = {}) {
+  const decay = opts.decay ?? 0.9;     // esquecimento
+  const alpha = opts.alpha ?? 0.4;     // mistura base vs postura
+  const noise = opts.noise ?? 0.12;    // aleatoriedade na escolha
+  const postureNames = ["A", "B", "C"];
+
+  const state = {
+    count: { attack: 1, defense: 1, dodge: 1, draw: 1 }, // começa suave
+    heat: {
+      attack: [1, 1, 1],
+      defense: [1, 1, 1],
+      dodge: [1, 1, 1],
+      draw: [1, 1, 1],
+    },
+    heatPosture: [1, 1, 1],
+  };
+
+  function _decayAll() {
+    for (const k in state.count) state.count[k] *= decay;
+    for (const k in state.heat) for (let p = 0; p < 3; p++) state.heat[k][p] *= decay;
+    for (let p = 0; p < 3; p++) state.heatPosture[p] *= decay;
+  }
+
+  function observe({ posture, breath, action }) {
+    // posture: 0(A)|1(B)|2(C) ; action: "attack"|"defense"|"dodge"|"draw"
+    _decayAll();
+    state.count[action] += 1;
+    state.heat[action][posture] += 1;
+    state.heatPosture[posture] += 1;
+    // opcional: poderíamos guardar breath/posture anteriores
+  }
+
+  function _normalize(obj) {
+    const sum = Object.values(obj).reduce((a, b) => a + b, 0) || 1;
+    const out = {};
+    for (const k in obj) out[k] = obj[k] / sum;
+    return out;
+  }
+
+  function _clampProbs(p) {
+    // evita zeros duros; mantém somatório 1
+    const eps = 1e-6;
+    let sum = 0;
+    for (const k in p) { p[k] = Math.max(p[k], eps); sum += p[k]; }
+    for (const k in p) p[k] /= sum;
+    return p;
+  }
+
+  function predict({ posture, breath }) {
+    // base global
+    const pBase = _normalize({ ...state.count });
+
+    // condicional à postura atual
+    const raw = {
+      attack: state.heat.attack[posture],
+      defense: state.heat.defense[posture],
+      dodge: state.heat.dodge[posture],
+      draw: state.heat.draw[posture],
+    };
+    const pPost = _normalize(raw);
+
+    // mistura
+    let p = {
+      attack: alpha * pBase.attack + (1 - alpha) * pPost.attack,
+      defense: alpha * pBase.defense + (1 - alpha) * pPost.defense,
+      dodge: alpha * pBase.dodge + (1 - alpha) * pPost.dodge,
+      draw:   alpha * pBase.draw   + (1 - alpha) * pPost.draw,
+    };
+
+    // ajuste por fôlego
+    if (breath <= 0) {
+      p = { attack: 0, defense: 0, dodge: 0, draw: 1 };
+    } else if (breath === 1) {
+      p.attack *= 0.6;      // atacar cansa
+      p.defense *= 1.2;
+      p.dodge *= 1.2;
+      p.draw   *= 1.1;
+    }
+
+    return _clampProbs(p);
+  }
+
+  // EVs simplificados por matchup de tipo
+  // Ajusta os números no teu tuning: [-2..+2] é uma boa escala
+  function expectedValue(myActionType, oppType) {
+    const M = {
+      attack:  { attack: -0.3, defense: -1.2, dodge: -0.8, draw: +0.8 },
+      defense: { attack: +1.6, defense: +0.1, dodge: -0.2, draw: +0.2 }, // parry alto
+      dodge:   { attack: +0.8, defense: 0.0,  dodge: 0.0,  draw: +0.1 },
+      draw:    { attack: -0.9, defense: -0.3, dodge: -0.1, draw: 0.0  },
+    };
+    return M[myActionType][oppType];
+  }
+
+  function chooseAction({ posture, breath, myActionOptions }) {
+    // myActionOptions: array de strings disponíveis pra IA neste turno
+    // ex.: ["attack","defense","dodge","draw"] mas pode faltar alguma
+    const probs = predict({ posture, breath });
+
+    // calcula EV por opção
+    const scored = myActionOptions.map(type => {
+      const ev =
+        probs.attack  * expectedValue(type, "attack")  +
+        probs.defense * expectedValue(type, "defense") +
+        probs.dodge   * expectedValue(type, "dodge")   +
+        probs.draw    * expectedValue(type, "draw");
+      return { type, ev };
+    });
+
+    // ruído leve (exploração)
+    for (const s of scored) s.ev *= (1 - noise) + Math.random() * noise * 2;
+
+    scored.sort((a, b) => b.ev - a.ev);
+    return { pick: scored[0].type, scored, probs };
+  }
+
+  // reset opcional para novo oponente / nova série
+  function reset(prior) {
+    if (!prior) {
+      state.count = { attack: 1, defense: 1, dodge: 1, draw: 1 };
+      state.heat  = { attack: [1,1,1], defense: [1,1,1], dodge: [1,1,1], draw: [1,1,1] };
+      state.heatPosture = [1,1,1];
+    } else {
+      state.count = { ...prior.count };
+      state.heat  = {
+        attack: [...prior.heat.attack],
+        defense: [...prior.heat.defense],
+        dodge:   [...prior.heat.dodge],
+        draw:    [...prior.heat.draw],
+      };
+      state.heatPosture = [...prior.heatPosture];
+    }
+  }
+
+  function snapshot() {
+    // pra carregar como prior no MD3
+    return JSON.parse(JSON.stringify(state));
+  }
+
+  return { observe, predict, chooseAction, reset, snapshot, postureNames };
+}
