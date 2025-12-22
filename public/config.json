@@ -1,4 +1,0 @@
-{
-  "SERVER_HTTP_URL": "https://your-breath-backend.onrender.com",
-  "SERVER_WS_URL": "wss://your-breath-backend.onrender.com"
-}
