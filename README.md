@@ -28,6 +28,42 @@ Por padrão, o GitHub Pages implanta apenas o frontend (client). Para usar funci
 
 **Nota**: Se `public/config.json` estiver vazio ou com valores em branco, o site mostrará um aviso e desabilitará funcionalidades online. O jogo local continuará funcionando normalmente.
 
+### Configuring Render Backend for GitHub Pages
+
+For the GitHub Pages deployment to connect to a Render-hosted backend:
+
+1. **Deploy your backend to Render** (Frankfurt/EU Central region recommended for lower latency)
+   - Create a Render Web Service from this repository
+   - Configure environment variables (see `.env.example`)
+   - Note your Render service URL (e.g., `https://your-breath-backend.onrender.com`)
+
+2. **Update `public/config.json`** in this repository with your Render URLs:
+
+```json
+{
+  "SERVER_HTTP_URL": "https://your-breath-backend.onrender.com",
+  "SERVER_WS_URL": "wss://your-breath-backend.onrender.com"
+}
+```
+
+**Important**: Both `SERVER_HTTP_URL` and `SERVER_WS_URL` must be set for the server to be considered configured. Use `https://` for HTTP and `wss://` for WebSocket.
+
+3. **Validate the configuration** after deploying:
+   - Visit https://gvicarvalho.github.io/Breath-/config.json
+   - Verify both URLs point to your Render backend
+   - Ensure no secrets or credentials are in this file (it's publicly accessible!)
+
+4. **Test the connection**:
+   - Visit https://gvicarvalho.github.io/Breath-/
+   - Check that online features are enabled
+   - Try logging in with Google or Discord OAuth
+
+**Notes**:
+- The config.json file is served statically from GitHub Pages and loaded at runtime
+- Changes to config.json require a new commit and push to trigger redeployment
+- Do not include any secrets, API keys, or database credentials in config.json
+- For local development, continue using localhost URLs or environment variables
+
 ### Runtime Configuration
 
 O client usa configuração em runtime através do arquivo `public/config.json`, que permite alterar URLs do servidor sem necessidade de rebuild. O sistema funciona da seguinte forma:
