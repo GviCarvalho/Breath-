@@ -8,7 +8,11 @@
         "build": "tsc -b && vite build",
         "preview": "vite preview",
         "test": "vitest",
-        "server": "tsx server/index.ts"
+        "server": "tsx server/index.ts",
+        "db:generate": "prisma generate",
+        "db:migrate": "prisma migrate dev",
+        "db:studio": "prisma studio",
+        "docker:db": "docker-compose up -d postgres"
     },
     "dependencies": {
         "@prisma/client": "^7.2.0",
