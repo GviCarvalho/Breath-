@@ -211,6 +211,53 @@ npm run db:generate
 npm run db:migrate
 ```
 
+## Prisma Migrations for Production (Render)
+
+### Why Migrations Are Required
+
+When deploying to production environments like Render, Prisma needs migration files to create and update database tables. Without these files, you'll see errors like:
+```
+No migration found in prisma/migrations
+The table public.users does not exist
+```
+
+The migration files define the database schema changes in SQL and allow Prisma to safely apply them to your production database.
+
+### Generating Migrations via GitHub Actions
+
+If you don't have access to a local environment or Render Shell, you can generate Prisma migrations using GitHub Actions:
+
+1. **Navigate to the Actions tab** in your GitHub repository
+2. **Select "Generate Prisma Migrations"** from the workflows list
+3. **Click "Run workflow"** and select the `main` branch
+4. **Wait for the workflow to complete** - it will:
+   - Set up a temporary PostgreSQL database
+   - Generate the Prisma Client
+   - Create migration files based on your `schema.prisma`
+   - Automatically commit and push the migrations back to your repository
+
+The workflow is idempotent - it will only generate new migrations if:
+- No migrations exist yet (initial setup)
+- You've made changes to `prisma/schema.prisma` since the last migration
+
+### Render Build Configuration
+
+Ensure your Render build command includes:
+
+```bash
+npm install && npx prisma generate && npx prisma migrate deploy
+```
+
+This will:
+1. Install all dependencies
+2. Generate the Prisma Client
+3. Apply all pending migrations to your production database
+
+**Important**: 
+- `prisma migrate deploy` is safe for production (applies existing migrations)
+- `prisma migrate dev` should NEVER be used in production
+- Always generate migrations via the GitHub Actions workflow or locally before deploying
+
 ## Scripts
 
 - `npm run dev` – inicia o client em modo desenvolvimento (Vite).

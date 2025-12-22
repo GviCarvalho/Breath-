@@ -1,0 +1,135 @@
+name: Generate Prisma Migrations
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-migrations:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db?schema=public
+      
+      - name: Check for existing migrations
+        id: check-migrations
+        run: |
+          if [ -n "$(find prisma/migrations -mindepth 1 -maxdepth 1 -type d 2>/dev/null)" ]; then
+            echo "has_migrations=true" >> $GITHUB_OUTPUT
+            echo "Existing migrations found:"
+            ls -la prisma/migrations/
+          else
+            echo "has_migrations=false" >> $GITHUB_OUTPUT
+            echo "No migrations found. Will generate initial migration."
+          fi
+      
+      - name: Generate initial migration
+        if: steps.check-migrations.outputs.has_migrations == 'false'
+        run: npx prisma migrate dev --name init --create-only
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db?schema=public
+      
+      - name: Check for schema changes
+        if: steps.check-migrations.outputs.has_migrations == 'true'
+        id: check-changes
+        run: |
+          # Try to create a migration for any schema changes
+          npx prisma migrate dev --name update --create-only || true
+          
+          # Find the most recently created migration directory
+          LATEST_MIGRATION=$(find prisma/migrations -mindepth 1 -maxdepth 1 -type d -mmin -1 2>/dev/null | sort -r | head -n 1)
+          
+          if [ -n "$LATEST_MIGRATION" ]; then
+            # Check if the migration SQL file is empty or only contains a comment
+            SQL_FILE="$LATEST_MIGRATION/migration.sql"
+            if [ -f "$SQL_FILE" ]; then
+              # Remove comments and whitespace to check if there's actual content
+              CONTENT=$(grep -v '^--' "$SQL_FILE" | grep -v '^[[:space:]]*$' | wc -l)
+              if [ "$CONTENT" -gt 0 ]; then
+                echo "has_new_migration=true" >> $GITHUB_OUTPUT
+                echo "New migration created for schema changes."
+              else
+                echo "has_new_migration=false" >> $GITHUB_OUTPUT
+                echo "No schema changes detected (empty migration created)."
+                # Remove the empty migration directory
+                rm -rf "$LATEST_MIGRATION"
+              fi
+            else
+              echo "has_new_migration=false" >> $GITHUB_OUTPUT
+              echo "Migration SQL file not found."
+            fi
+          else
+            echo "has_new_migration=false" >> $GITHUB_OUTPUT
+            echo "No new migration directory created."
+          fi
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db?schema=public
+      
+      - name: Configure Git
+        if: steps.check-migrations.outputs.has_migrations == 'false' || steps.check-changes.outputs.has_new_migration == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Commit and push migrations
+        if: steps.check-migrations.outputs.has_migrations == 'false' || steps.check-changes.outputs.has_new_migration == 'true'
+        run: |
+          git add prisma/migrations/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: generate Prisma migrations [skip ci]"
+            git push
+            echo "✅ Migrations committed and pushed successfully"
+          fi
+      
+      - name: Summary
+        run: |
+          echo "### Migration Generation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check-migrations.outputs.has_migrations }}" == "false" ]; then
+            echo "✅ Initial migration generated and committed" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.check-changes.outputs.has_new_migration }}" == "true" ]; then
+            echo "✅ New migration generated for schema changes" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ No migrations needed - schema is up to date" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Current migrations:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -la prisma/migrations/ >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
