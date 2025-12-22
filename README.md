@@ -9,6 +9,33 @@ The app is automatically deployed to GitHub Pages at:
 
 Deployments happen automatically on every push to the `main` branch via GitHub Actions.
 
+## Menu Principal
+
+O jogo agora possui um menu principal profissional que serve como ponto de entrada para todas as funcionalidades:
+
+- **Jogar Online**: 
+  - Modos Casual e Ranqueado (ranqueado vem com "Em breve")
+  - Criar Sala (requer login)
+  - Entrar com Código (requer login para jogadores)
+  - Espectar (sem necessidade de login)
+  - Partida Rápida (desabilitado - "Em breve")
+
+- **Jogar Local**:
+  - Vs IA (jogo contra computador)
+  - Hot-seat (dois jogadores no mesmo dispositivo)
+  - Gerenciar Decks (acesso ao deck builder)
+
+- **Ranking**: Leaderboard Global (desabilitado - "Em breve", disponível quando modo ranqueado for lançado)
+
+- **Regras & Ajuda**: Acesso ao manual do jogo
+
+### Autenticação
+
+O menu possui integração completa com autenticação OAuth:
+- Botão "Entrar" no header com opções Google e Discord
+- Exibe nome do usuário e provedor quando logado
+- Botão "Sair" para fazer logout
+
 ## Requisitos
 - Node.js 18+
 - Docker (opcional, para Postgres local)
@@ -41,7 +68,27 @@ Este script irá:
 cp .env.example .env
 ```
 
-2. Edite o arquivo `.env` e configure as variáveis necessárias:
+2. Edite o arquivo `.env` e configure as variáveis necessárias.
+
+### Variáveis de Ambiente
+
+O projeto utiliza variáveis de ambiente tanto para o servidor quanto para o client:
+
+**Servidor (Node.js/Express)**:
+- `PORT`: Porta do servidor (padrão: 3001)
+- `NODE_ENV`: Ambiente (development/production)
+- `JWT_SECRET`: Chave secreta para JWT
+- `CLIENT_ORIGIN_DEV`: Origem do client em desenvolvimento
+- `CLIENT_ORIGIN_PROD`: Origem do client em produção
+- `DATABASE_URL`: String de conexão do PostgreSQL
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`: Credenciais OAuth Google
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_CALLBACK_URL`: Credenciais OAuth Discord
+
+**Client (Vite/React)**:
+- `VITE_SERVER_HTTP_URL`: URL do servidor HTTP (padrão: http://localhost:3001)
+- `VITE_SERVER_WS_URL`: URL do servidor WebSocket (padrão: ws://localhost:3001)
+
+**Importante**: Variáveis do Vite devem ser prefixadas com `VITE_` e são disponibilizadas no client em tempo de build. Configure-as no arquivo `.env` na raiz do projeto.
 
 ### Banco de Dados (Postgres)
 
