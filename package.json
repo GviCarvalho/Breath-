@@ -15,6 +15,7 @@
         "docker:db": "docker-compose up -d postgres"
     },
     "dependencies": {
+        "@prisma/adapter-pg": "^7.2.0",
         "@prisma/client": "^7.2.0",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
@@ -23,6 +24,7 @@
         "passport": "^0.7.0",
         "passport-discord": "^0.1.4",
         "passport-google-oauth20": "^2.0.0",
+        "pg": "^8.16.3",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "ws": "^8.18.3"
@@ -35,6 +37,7 @@
         "@types/node": "^24.6.1",
         "@types/passport": "^1.0.17",
         "@types/passport-google-oauth20": "^2.0.17",
+        "@types/pg": "^8.16.0",
         "@types/react": "^18.2.38",
         "@types/react-dom": "^18.2.17",
         "@types/ws": "^8.18.1",
