@@ -70,13 +70,31 @@ jobs:
           # Try to create a migration for any schema changes
           npx prisma migrate dev --name update --create-only || true
           
-          # Check if a new migration was created
-          if [ -n "$(find prisma/migrations -mindepth 1 -maxdepth 1 -type d -mmin -1 2>/dev/null)" ]; then
-            echo "has_new_migration=true" >> $GITHUB_OUTPUT
-            echo "New migration created for schema changes."
+          # Find the most recently created migration directory
+          LATEST_MIGRATION=$(find prisma/migrations -mindepth 1 -maxdepth 1 -type d -mmin -1 2>/dev/null | sort -r | head -n 1)
+          
+          if [ -n "$LATEST_MIGRATION" ]; then
+            # Check if the migration SQL file is empty or only contains a comment
+            SQL_FILE="$LATEST_MIGRATION/migration.sql"
+            if [ -f "$SQL_FILE" ]; then
+              # Remove comments and whitespace to check if there's actual content
+              CONTENT=$(grep -v '^--' "$SQL_FILE" | grep -v '^[[:space:]]*$' | wc -l)
+              if [ "$CONTENT" -gt 0 ]; then
+                echo "has_new_migration=true" >> $GITHUB_OUTPUT
+                echo "New migration created for schema changes."
+              else
+                echo "has_new_migration=false" >> $GITHUB_OUTPUT
+                echo "No schema changes detected (empty migration created)."
+                # Remove the empty migration directory
+                rm -rf "$LATEST_MIGRATION"
+              fi
+            else
+              echo "has_new_migration=false" >> $GITHUB_OUTPUT
+              echo "Migration SQL file not found."
+            fi
           else
             echo "has_new_migration=false" >> $GITHUB_OUTPUT
-            echo "No schema changes detected. No new migration needed."
+            echo "No new migration directory created."
           fi
         env:
           DATABASE_URL: postgresql://breath_user:breath_password@localhost:5432/breath_db?schema=public
