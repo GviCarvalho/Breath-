@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { getConfig, isServerConfigured } from '@/lib/config';
 
 interface User {
   userId: string;
@@ -10,6 +11,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   error: string | null;
+  serverConfigured: boolean;
   login: (provider: 'google' | 'discord') => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -17,18 +19,33 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const SERVER_HTTP_URL = (import.meta as any).env?.VITE_SERVER_HTTP_URL || 'http://localhost:3001';
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [serverConfigured, setServerConfigured] = useState(false);
+  const [serverHttpUrl, setServerHttpUrl] = useState('');
+
+  // Load config on mount
+  useEffect(() => {
+    getConfig().then((config) => {
+      setServerHttpUrl(config.SERVER_HTTP_URL);
+      setServerConfigured(isServerConfigured(config));
+    });
+  }, []);
 
   const refreshUser = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${SERVER_HTTP_URL}/auth/me`, {
+      
+      if (!serverHttpUrl) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${serverHttpUrl}/auth/me`, {
         credentials: 'include',
       });
 
@@ -45,20 +62,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [serverHttpUrl]);
 
   useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
+    if (serverHttpUrl) {
+      refreshUser();
+    } else {
+      setLoading(false);
+    }
+  }, [serverHttpUrl, refreshUser]);
 
   const login = useCallback((provider: 'google' | 'discord') => {
-    window.location.href = `${SERVER_HTTP_URL}/auth/${provider}`;
-  }, []);
+    if (!serverHttpUrl) {
+      setError('Servidor não configurado');
+      return;
+    }
+    window.location.href = `${serverHttpUrl}/auth/${provider}`;
+  }, [serverHttpUrl]);
 
   const logout = useCallback(async () => {
     try {
       setError(null);
-      await fetch(`${SERVER_HTTP_URL}/auth/logout`, {
+      if (!serverHttpUrl) {
+        setUser(null);
+        return;
+      }
+      await fetch(`${serverHttpUrl}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -67,10 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('[Auth] Failed to logout:', err);
       setError(err instanceof Error ? err.message : 'Failed to logout');
     }
-  }, []);
+  }, [serverHttpUrl]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, error, serverConfigured, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
