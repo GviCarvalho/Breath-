@@ -25,8 +25,8 @@ async function loadRuntimeConfig(): Promise<RuntimeConfig> {
     const config: RuntimeConfig = await response.json();
     
     // Use runtime config if both URLs are provided, otherwise fallback to env vars
-    const httpUrl = config.SERVER_HTTP_URL || (import.meta as any).env?.VITE_SERVER_HTTP_URL || '';
-    const wsUrl = config.SERVER_WS_URL || (import.meta as any).env?.VITE_SERVER_WS_URL || '';
+    const httpUrl = config.SERVER_HTTP_URL || import.meta.env.VITE_SERVER_HTTP_URL || '';
+    const wsUrl = config.SERVER_WS_URL || import.meta.env.VITE_SERVER_WS_URL || '';
     
     return {
       SERVER_HTTP_URL: httpUrl,
@@ -36,8 +36,8 @@ async function loadRuntimeConfig(): Promise<RuntimeConfig> {
     console.warn('[Config] Failed to load runtime config, using env vars fallback:', error);
     // Fallback to build-time env vars
     return {
-      SERVER_HTTP_URL: (import.meta as any).env?.VITE_SERVER_HTTP_URL || '',
-      SERVER_WS_URL: (import.meta as any).env?.VITE_SERVER_WS_URL || '',
+      SERVER_HTTP_URL: import.meta.env.VITE_SERVER_HTTP_URL || '',
+      SERVER_WS_URL: import.meta.env.VITE_SERVER_WS_URL || '',
     };
   }
 }
