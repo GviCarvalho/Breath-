@@ -8,53 +8,51 @@ const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
   console.warn('[auth] Google OAuth credentials not configured');
-}
-
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: GOOGLE_CLIENT_ID,
-      clientSecret: GOOGLE_CLIENT_SECRET,
-      callbackURL: GOOGLE_CALLBACK_URL,
-    },
-    async (_accessToken, _refreshToken, profile, done) => {
-      try {
-        // Find or create user
-        let user = await prisma.user.findUnique({
-          where: {
-            provider_providerAccountId: {
-              provider: 'google',
-              providerAccountId: profile.id,
-            },
-          },
-        });
-
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              provider: 'google',
-              providerAccountId: profile.id,
-              displayName: profile.displayName || profile.emails?.[0]?.value || 'Google User',
-              avatarUrl: profile.photos?.[0]?.value || null,
+} else {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: GOOGLE_CLIENT_ID,
+        clientSecret: GOOGLE_CLIENT_SECRET,
+        callbackURL: GOOGLE_CALLBACK_URL,
+      },
+      async (_accessToken, _refreshToken, profile, done) => {
+        try {
+          let user = await prisma.user.findUnique({
+            where: {
+              provider_providerAccountId: {
+                provider: 'google',
+                providerAccountId: profile.id,
+              },
             },
           });
-        } else {
-          // Update user info
-          user = await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              displayName: profile.displayName || profile.emails?.[0]?.value || user.displayName,
-              avatarUrl: profile.photos?.[0]?.value || user.avatarUrl,
-            },
-          });
+
+          if (!user) {
+            user = await prisma.user.create({
+              data: {
+                provider: 'google',
+                providerAccountId: profile.id,
+                displayName: profile.displayName || profile.emails?.[0]?.value || 'Google User',
+                avatarUrl: profile.photos?.[0]?.value || null,
+              },
+            });
+          } else {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                displayName: profile.displayName || profile.emails?.[0]?.value || user.displayName,
+                avatarUrl: profile.photos?.[0]?.value || user.avatarUrl,
+              },
+            });
+          }
+
+          done(null, user);
+        } catch (error) {
+          done(error as Error, undefined);
         }
-
-        done(null, user);
-      } catch (error) {
-        done(error as Error, undefined);
       }
-    }
-  )
-);
+    )
+  );
+}
 
 export default passport;
