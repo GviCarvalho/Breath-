@@ -1,13 +1,13 @@
-<<<<<<< HEAD
-# Breath-
-=======
 # Breath! TCG Prototype
 
-Prot�tipo do card game **Breath!**, constru�do com React + Vite para experimentos locais/online.
-
-# Breath-
-
 Protótipo do card game Breath!, construído com React + Vite para experimentos locais/online.
+
+## GitHub Pages Deployment
+
+The app is automatically deployed to GitHub Pages at:
+**https://gvicarvalho.github.io/Breath-/**
+
+Deployments happen automatically on every push to the `main` branch via GitHub Actions.
 
 ## Requisitos
 - Node.js 18+
