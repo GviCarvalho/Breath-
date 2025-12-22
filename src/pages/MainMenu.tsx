@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 
 export default function MainMenu() {
   const navigate = useNavigate();
-  const { user, loading, login, logout } = useAuth();
+  const { user, loading, login, logout, serverConfigured } = useAuth();
   const [showLoginMenu, setShowLoginMenu] = useState(false);
   const [gameMode, setGameMode] = useState<'casual' | 'ranked'>('casual');
   const [roomCode, setRoomCode] = useState('');
@@ -15,6 +15,10 @@ export default function MainMenu() {
   const TokenImg = new URL('../Assets/art/tokens/Carved Green Yin-Yang Token.png', import.meta.url).href;
 
   const handleCreateRoom = () => {
+    if (!serverConfigured) {
+      alert('Servidor online não configurado. Configure o servidor em public/config.json para usar funcionalidades online.');
+      return;
+    }
     if (!user) {
       alert('Você precisa estar logado para criar uma sala.');
       return;
@@ -24,6 +28,10 @@ export default function MainMenu() {
   };
 
   const handleJoinWithCode = () => {
+    if (!serverConfigured) {
+      alert('Servidor online não configurado. Configure o servidor em public/config.json para usar funcionalidades online.');
+      return;
+    }
     if (!user) {
       alert('Você precisa estar logado para entrar em uma sala como jogador.');
       return;
@@ -36,6 +44,10 @@ export default function MainMenu() {
   };
 
   const handleSpectate = () => {
+    if (!serverConfigured) {
+      alert('Servidor online não configurado. Configure o servidor em public/config.json para usar funcionalidades online.');
+      return;
+    }
     if (!spectateCode.trim()) {
       alert('Por favor, insira um código de sala para espectar.');
       return;
@@ -89,10 +101,12 @@ export default function MainMenu() {
                 <Button
                   onClick={() => setShowLoginMenu(!showLoginMenu)}
                   className="bg-emerald-600 hover:bg-emerald-500"
+                  disabled={!serverConfigured}
+                  title={!serverConfigured ? 'Servidor não configurado' : ''}
                 >
                   Entrar
                 </Button>
-                {showLoginMenu && (
+                {showLoginMenu && serverConfigured && (
                   <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-50">
                     <button
                       onClick={() => {
@@ -121,6 +135,26 @@ export default function MainMenu() {
           </div>
         </div>
       </header>
+
+      {/* Server Not Configured Warning */}
+      {!serverConfigured && (
+        <div className="bg-yellow-600 border-b border-yellow-700">
+          <div className="max-w-7xl mx-auto px-6 py-3">
+            <div className="flex items-center gap-3 text-yellow-100">
+              <span className="text-xl">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium">
+                  Servidor online não configurado
+                </p>
+                <p className="text-xs mt-0.5">
+                  Funcionalidades online (login, criar/entrar em salas) estão desabilitadas. 
+                  Configure <code className="bg-yellow-700/30 px-1 rounded">public/config.json</code> com URLs do servidor para habilitar.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12">
@@ -163,12 +197,15 @@ export default function MainMenu() {
                 <Button
                   onClick={handleCreateRoom}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
-                  disabled={gameMode === 'ranked'}
+                  disabled={gameMode === 'ranked' || !serverConfigured}
                 >
                   🎮 Criar Sala
                 </Button>
-                {!user && (
+                {!user && serverConfigured && (
                   <p className="text-xs text-slate-400 mt-1">* Requer login</p>
+                )}
+                {!serverConfigured && (
+                  <p className="text-xs text-yellow-500 mt-1">* Servidor não configurado</p>
                 )}
               </div>
 
@@ -180,18 +217,21 @@ export default function MainMenu() {
                     value={roomCode}
                     onChange={(e) => setRoomCode(e.target.value)}
                     className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-                    disabled={gameMode === 'ranked'}
+                    disabled={gameMode === 'ranked' || !serverConfigured}
                   />
                   <Button
                     onClick={handleJoinWithCode}
                     className="bg-sky-600 hover:bg-sky-500"
-                    disabled={gameMode === 'ranked'}
+                    disabled={gameMode === 'ranked' || !serverConfigured}
                   >
                     Entrar
                   </Button>
                 </div>
-                {!user && (
+                {!user && serverConfigured && (
                   <p className="text-xs text-slate-400 mt-1">* Requer login para jogar</p>
+                )}
+                {!serverConfigured && (
+                  <p className="text-xs text-yellow-500 mt-1">* Servidor não configurado</p>
                 )}
               </div>
 
@@ -203,17 +243,22 @@ export default function MainMenu() {
                     value={spectateCode}
                     onChange={(e) => setSpectateCode(e.target.value)}
                     className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-                    disabled={gameMode === 'ranked'}
+                    disabled={gameMode === 'ranked' || !serverConfigured}
                   />
                   <Button
                     onClick={handleSpectate}
                     className="bg-white/5 border border-white/10 hover:bg-white/10"
-                    disabled={gameMode === 'ranked'}
+                    disabled={gameMode === 'ranked' || !serverConfigured}
                   >
                     👁️ Espectar
                   </Button>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Sem necessidade de login</p>
+                {serverConfigured && (
+                  <p className="text-xs text-slate-400 mt-1">Sem necessidade de login</p>
+                )}
+                {!serverConfigured && (
+                  <p className="text-xs text-yellow-500 mt-1">* Servidor não configurado</p>
+                )}
               </div>
 
               {/* Quick Match - Disabled */}

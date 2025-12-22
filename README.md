@@ -9,6 +9,33 @@ The app is automatically deployed to GitHub Pages at:
 
 Deployments happen automatically on every push to the `main` branch via GitHub Actions.
 
+### Configurando o Backend para Produção
+
+Por padrão, o GitHub Pages implanta apenas o frontend (client). Para usar funcionalidades online (autenticação, criar/entrar em salas), você precisa:
+
+1. **Hospedar o backend separadamente** em um serviço que suporte HTTPS (ex: Heroku, Railway, Fly.io, AWS, etc.)
+
+2. **Configurar as URLs do servidor** editando o arquivo `public/config.json` no seu repositório:
+
+```json
+{
+  "SERVER_HTTP_URL": "https://seu-servidor.com",
+  "SERVER_WS_URL": "wss://seu-servidor.com"
+}
+```
+
+3. **Commit e push das mudanças**. O GitHub Actions irá automaticamente fazer o deploy com a nova configuração.
+
+**Nota**: Se `public/config.json` estiver vazio ou com valores em branco, o site mostrará um aviso e desabilitará funcionalidades online. O jogo local continuará funcionando normalmente.
+
+### Runtime Configuration
+
+O client usa configuração em runtime através do arquivo `public/config.json`, que permite alterar URLs do servidor sem necessidade de rebuild. O sistema funciona da seguinte forma:
+
+- **Produção (GitHub Pages)**: Carrega `config.json` do diretório público
+- **Desenvolvimento**: Usa variáveis de ambiente `VITE_SERVER_HTTP_URL` e `VITE_SERVER_WS_URL` como fallback
+- **Sem configuração**: Desabilita funcionalidades online e mostra mensagem clara ao usuário
+
 ## Menu Principal
 
 O jogo agora possui um menu principal profissional que serve como ponto de entrada para todas as funcionalidades:

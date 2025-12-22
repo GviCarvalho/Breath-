@@ -7,9 +7,13 @@ import type {
   ParticipantRole,
   MatchSummary,
 } from '@/protocol/messages';
+import { getConfig } from '@/lib/config';
 
-const rawEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
-const DEFAULT_WS_URL = (rawEnv?.VITE_SERVER_WS_URL as string | undefined) ?? 'ws://localhost:3001';
+let defaultWsUrl = '';
+// Initialize default WS URL from config
+getConfig().then((config) => {
+  defaultWsUrl = config.SERVER_WS_URL || '';
+});
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'waiting' | 'in_match' | 'spectating' | 'error';
 
@@ -34,7 +38,7 @@ interface UseMatchConnectionResult {
   clearError: () => void;
 }
 
-export function useMatchConnection(serverUrl: string = DEFAULT_WS_URL): UseMatchConnectionResult {
+export function useMatchConnection(serverUrl: string = defaultWsUrl): UseMatchConnectionResult {
   const [status, setStatus] = useState<ConnectionStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
