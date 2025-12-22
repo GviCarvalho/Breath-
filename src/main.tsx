@@ -7,7 +7,7 @@ import { AppStateProvider } from '@/store/appState';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 // Use basename for GitHub Pages deployment
-const basename = import.meta.env.BASE_URL || '/';
+const basename = '/Breath-/';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
