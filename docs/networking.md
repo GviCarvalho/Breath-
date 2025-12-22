@@ -3,18 +3,57 @@
 ## Conexão
 - Servidor WebSocket padrão: `ws://localhost:3001`.
 - Todas as mensagens trafegam em JSON UTF-8 e possuem a propriedade `type`.
+- **Autenticação**: O servidor lê o cookie `access_token` (JWT) durante o upgrade do WebSocket.
+  - Jogadores (p1/p2) **precisam** estar autenticados.
+  - Espectadores **não** precisam de autenticação.
+
+## Autenticação HTTP
+
+Antes de criar ou entrar em partidas, jogadores devem autenticar via OAuth:
+
+### Endpoints de Autenticação
+- `GET /auth/google` - Inicia fluxo OAuth do Google
+- `GET /auth/google/callback` - Callback do Google OAuth
+- `GET /auth/discord` - Inicia fluxo OAuth do Discord
+- `GET /auth/discord/callback` - Callback do Discord OAuth
+- `GET /auth/me` - Retorna informações do usuário autenticado
+- `POST /auth/logout` - Remove cookie de autenticação
+
+### Fluxo de Autenticação
+1. Client redireciona para `/auth/google` ou `/auth/discord`
+2. Usuário autoriza a aplicação no provedor OAuth
+3. Servidor recebe callback, cria/atualiza usuário no banco
+4. Servidor emite cookie `access_token` (JWT) com flags:
+   - `HttpOnly`: Cookie não acessível via JavaScript
+   - `Secure`: Apenas HTTPS (em produção)
+   - `SameSite=None`: Permite cross-origin (em produção)
+   - Validade: 7 dias
+5. Client é redirecionado de volta com cookie válido
+
+### Estrutura do JWT
+```json
+{
+  "userId": "cuid",
+  "provider": "google" | "discord",
+  "displayName": "Nome do Usuário"
+}
+```
 
 ## Mensagens do Cliente
 - `create_match` `{ type, name? }`
   - Cria nova partida e ocupa o slot P1.
+  - **Requer autenticação**.
 - `join_match` `{ type, matchId, name? }`
   - Entra em uma partida aberta (P1 ou P2, dependendo da vaga disponível).
+  - **Requer autenticação**.
 - `spectate_match` `{ type, matchId, name? }`
   - Entra como espectador (sem interações de jogo).
+  - **Não requer autenticação**.
 - `list_matches` `{ type }`
   - Solicita o lobby com partidas disponíveis.
 - `play_card` `{ type, matchId, playerId, cardId }`
   - Envia a carta escolhida pelo jogador para a rodada atual.
+  - O servidor valida usando `userId` do JWT (ignora `playerId` do client).
 - `reset_match` `{ type, matchId, playerId }`
   - Reinicia a partida (embaralhando deck e distribuindo novas mãos).
 - `leave_match` `{ type, matchId, playerId? }`

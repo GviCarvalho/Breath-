@@ -22,5 +22,10 @@ Thumbs.db
 # Coverage
 coverage/
 
+# Prisma
+node_modules/.prisma/
+
 # Misc
 !.vscode/extensions.json
+
+/generated/prisma

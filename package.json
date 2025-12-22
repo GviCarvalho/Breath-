@@ -1,32 +1,55 @@
 {
-    "name":  "breath-tcg-prototype",
-    "version":  "0.1.0",
-    "private":  true,
-    "type":  "module",
-    "scripts":  {
-                    "dev":  "vite",
-                    "build":  "tsc -b \u0026\u0026 vite build",
-                    "preview":  "vite preview",
-                    "test":  "vitest",
-                    "server":  "tsx server/index.ts"
-                },
-    "dependencies":  {
-                         "react":  "^18.2.0",
-                         "react-dom":  "^18.2.0",
-                         "ws":  "^8.18.3"
-                     },
-    "devDependencies":  {
-                            "@types/node":  "^24.6.1",
-                            "@types/react":  "^18.2.38",
-                            "@types/react-dom":  "^18.2.17",
-                            "@types/ws":  "^8.18.1",
-                            "@vitejs/plugin-react":  "^4.2.0",
-                            "autoprefixer":  "^10.4.19",
-                            "postcss":  "^8.4.38",
-                            "tailwindcss":  "^3.4.6",
-                            "tsx":  "^4.20.6",
-                            "typescript":  "^5.4.2",
-                            "vite":  "^5.0.8",
-                            "vitest":  "^3.2.4"
-                        }
+    "name": "breath-tcg-prototype",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc -b && vite build",
+        "preview": "vite preview",
+        "test": "vitest",
+        "server": "tsx server/index.ts",
+        "db:generate": "prisma generate",
+        "db:migrate": "prisma migrate dev",
+        "db:studio": "prisma studio",
+        "docker:db": "docker-compose up -d postgres"
+    },
+    "dependencies": {
+        "@prisma/adapter-pg": "^7.2.0",
+        "@prisma/client": "^7.2.0",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.5",
+        "express": "^5.2.1",
+        "jsonwebtoken": "^9.0.3",
+        "passport": "^0.7.0",
+        "passport-discord": "^0.1.4",
+        "passport-google-oauth20": "^2.0.0",
+        "pg": "^8.16.3",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "ws": "^8.18.3"
+    },
+    "devDependencies": {
+        "@types/cookie-parser": "^1.4.10",
+        "@types/cors": "^2.8.19",
+        "@types/express": "^5.0.6",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/node": "^24.6.1",
+        "@types/passport": "^1.0.17",
+        "@types/passport-google-oauth20": "^2.0.17",
+        "@types/pg": "^8.16.0",
+        "@types/react": "^18.2.38",
+        "@types/react-dom": "^18.2.17",
+        "@types/ws": "^8.18.1",
+        "@vitejs/plugin-react": "^4.2.0",
+        "autoprefixer": "^10.4.19",
+        "dotenv": "^17.2.3",
+        "postcss": "^8.4.38",
+        "prisma": "^7.2.0",
+        "tailwindcss": "^3.4.6",
+        "tsx": "^4.20.6",
+        "typescript": "^5.4.2",
+        "vite": "^5.0.8",
+        "vitest": "^3.2.4"
+    }
 }

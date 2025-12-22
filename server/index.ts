@@ -1,5 +1,15 @@
+import 'dotenv/config';
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
+import passport from 'passport';
+import authRoutes from './auth/routes';
+import { verifyToken } from './lib/jwt';
+import { COOKIE_NAME } from './lib/cookie';
+import { parseCookies } from './lib/cookies';
 import {
   makeDeck,
   initialHandSetup,
@@ -25,9 +35,48 @@ import {
 } from '../src/protocol/messages';
 
 const PORT = Number(process.env.PORT ?? 3001);
+const CLIENT_ORIGIN_DEV = process.env.CLIENT_ORIGIN_DEV || 'http://localhost:5173';
+const CLIENT_ORIGIN_PROD = process.env.CLIENT_ORIGIN_PROD || 'https://gvicarvalho.github.io';
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = isProduction
+  ? [CLIENT_ORIGIN_PROD]
+  : [CLIENT_ORIGIN_DEV, CLIENT_ORIGIN_PROD];
 
+// Express app setup
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
+app.use(passport.initialize());
+
+// Auth routes
+app.use('/auth', authRoutes);
+
+// Health check
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Create HTTP server
+const server = createServer(app);
+
+// WebSocket types and data structures
 interface MatchPlayer {
   id: string | null;
+  userId: string | null; // Authenticated user ID from JWT
   socket: WebSocket | null;
   state: PlayerState;
 }
@@ -54,6 +103,7 @@ interface ConnectionInfo {
   matchId: string;
   role: ParticipantRole;
   playerId?: string;
+  userId?: string; // Authenticated user ID
   name?: string;
 }
 
@@ -96,8 +146,8 @@ function createMatchRecord(name?: string): MatchRecord {
     gameOver: null,
     createdAt: Date.now(),
     players: {
-      p1: { id: null, socket: null, state: p1 },
-      p2: { id: null, socket: null, state: p2 },
+      p1: { id: null, userId: null, socket: null, state: p1 },
+      p2: { id: null, userId: null, socket: null, state: p2 },
     },
     spectators: new Map(),
     extraPending: 'none',
@@ -205,24 +255,37 @@ function handleListMatches(socket: WebSocket) {
   send(socket, { type: 'match_list', matches: summaries });
 }
 
-function handleCreateMatch(socket: WebSocket, message: Extract<ClientMessage, { type: 'create_match' }>) {
+function handleCreateMatch(socket: WebSocket, message: Extract<ClientMessage, { type: 'create_match' }>, userId?: string) {
+  // Require authentication for creating matches
+  if (!userId) {
+    send(socket, { type: 'error', message: 'Autenticação necessária para criar partidas.' });
+    return;
+  }
+
   const match = createMatchRecord(message.name);
   const playerId = randomUUID();
   match.players.p1.id = playerId;
+  match.players.p1.userId = userId;
   match.players.p1.socket = socket;
   match.players.p1.state.name = message.name ?? match.players.p1.state.name;
   matches.set(match.id, match);
-  connections.set(socket, { matchId: match.id, role: 'p1', playerId, name: match.players.p1.state.name });
+  connections.set(socket, { matchId: match.id, role: 'p1', playerId, userId, name: match.players.p1.state.name });
 
   const snapshot = sanitizeSnapshot(toSnapshot(match), 'p1');
   send(socket, { type: 'match_created', matchId: match.id, playerId, role: 'p1', snapshot });
-  logServer('match_created', { matchId: match.id, playerId });
+  logServer('match_created', { matchId: match.id, playerId, userId });
 }
 
-function handleJoinMatch(socket: WebSocket, message: Extract<ClientMessage, { type: 'join_match' }>) {
+function handleJoinMatch(socket: WebSocket, message: Extract<ClientMessage, { type: 'join_match' }>, userId?: string) {
   const match = matches.get(message.matchId);
   if (!match) {
     send(socket, { type: 'error', message: 'Partida inexistente.' });
+    return;
+  }
+
+  // Require authentication for joining as player
+  if (!userId) {
+    send(socket, { type: 'error', message: 'Autenticação necessária para entrar como jogador.' });
     return;
   }
 
@@ -235,9 +298,10 @@ function handleJoinMatch(socket: WebSocket, message: Extract<ClientMessage, { ty
   const playerId = randomUUID();
   const player = match.players[availableSlot];
   player.id = playerId;
+  player.userId = userId;
   player.socket = socket;
   player.state.name = message.name ?? (availableSlot === 'p1' ? 'Jogador 1' : 'Jogador 2');
-  connections.set(socket, { matchId: match.id, role: availableSlot, playerId, name: player.state.name });
+  connections.set(socket, { matchId: match.id, role: availableSlot, playerId, userId, name: player.state.name });
 
   if (match.players.p1.id && match.players.p2.id) {
     resetMatchState(match);
@@ -257,10 +321,11 @@ function handleJoinMatch(socket: WebSocket, message: Extract<ClientMessage, { ty
   }
 
   broadcastState(match, ['none'], []);
-  logServer('player_joined', { matchId: match.id, role: availableSlot, playerId });
+  logServer('player_joined', { matchId: match.id, role: availableSlot, playerId, userId });
 }
 
 function handleSpectateMatch(socket: WebSocket, message: Extract<ClientMessage, { type: 'spectate_match' }>) {
+  // Spectators don't need authentication
   const match = matches.get(message.matchId);
   if (!match) {
     send(socket, { type: 'error', message: 'Partida inexistente.' });
@@ -292,10 +357,16 @@ function handlePlayCard(socket: WebSocket, info: ConnectionInfo, message: Extrac
 
   const slot = match.players[info.role];
   const opponentSlot = match.players[info.role === 'p1' ? 'p2' : 'p1'];
-  if (slot.id !== info.playerId) {
+  
+  // Use userId for authentication if available, fallback to playerId for backward compatibility
+  const isAuthenticated = info.userId && slot.userId === info.userId;
+  const isLegacy = !info.userId && slot.id === info.playerId;
+  
+  if (!isAuthenticated && !isLegacy) {
     send(socket, { type: 'error', message: 'Identificador invalido.' });
     return;
   }
+  
   if (slot.state.revealed) {
     send(socket, { type: 'error', message: 'Carta ja selecionada nesta rodada.' });
     return;
@@ -424,6 +495,7 @@ function handleLeave(socket: WebSocket, info: ConnectionInfo | undefined) {
 
   const slot = match.players[info.role];
   slot.id = null;
+  slot.userId = null;
   slot.socket = null;
   slot.state.name = 'Aguardando';
   slot.state.hand = [];
@@ -451,9 +523,17 @@ function handleLeave(socket: WebSocket, info: ConnectionInfo | undefined) {
   logServer('player_left', { matchId: match.id, role: info.role });
 }
 
-const wss = new WebSocketServer({ port: PORT });
+// WebSocket Server
+const wss = new WebSocketServer({ noServer: true });
 
-wss.on('connection', (socket) => {
+wss.on('connection', (socket: WebSocket, userId?: string) => {
+  // Store userId if authenticated
+  if (userId) {
+    logServer('ws_connection', { userId, authenticated: true });
+  } else {
+    logServer('ws_connection', { authenticated: false });
+  }
+
   socket.on('message', (raw) => {
     let parsed: ClientMessage;
     try {
@@ -467,10 +547,10 @@ wss.on('connection', (socket) => {
 
     switch (parsed.type) {
       case 'create_match':
-        handleCreateMatch(socket, parsed);
+        handleCreateMatch(socket, parsed, userId);
         break;
       case 'join_match':
-        handleJoinMatch(socket, parsed);
+        handleJoinMatch(socket, parsed, userId);
         break;
       case 'spectate_match':
         handleSpectateMatch(socket, parsed);
@@ -503,4 +583,25 @@ wss.on('connection', (socket) => {
   });
 });
 
-logServer('listening', { port: PORT });
+// Handle WebSocket upgrade
+server.on('upgrade', (request, socket, head) => {
+  // Parse cookies from the request
+  const cookies = parseCookies(request);
+  const token = cookies[COOKIE_NAME];
+
+  let userId: string | undefined;
+  if (token) {
+    const payload = verifyToken(token);
+    if (payload) {
+      userId = payload.userId;
+    }
+  }
+
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, userId);
+  });
+});
+
+server.listen(PORT, () => {
+  logServer('listening', { port: PORT, http: true, websocket: true });
+});
