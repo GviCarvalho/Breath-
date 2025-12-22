@@ -9,7 +9,7 @@ import type {
 } from '@/protocol/messages';
 
 const rawEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
-const DEFAULT_WS_URL = (rawEnv?.VITE_SERVER_URL as string | undefined) ?? 'ws://localhost:3001';
+const DEFAULT_WS_URL = (rawEnv?.VITE_SERVER_WS_URL as string | undefined) ?? 'ws://localhost:3001';
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'waiting' | 'in_match' | 'spectating' | 'error';
 

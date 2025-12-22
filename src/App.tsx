@@ -1,33 +1,43 @@
-import React, { useState } from 'react';
-// import { cn } from '@/lib/utils';
-import LocalGame from '@/features/local/LocalGame';
-import OnlineGame from '@/features/online/OnlineGame';
-import DeckBuilder from '@/features/deck/DeckBuilderHtml';
-import Game from '@/features/game/Game'; // Importing the Game component
-import Home from '@/features/home/Home';
-import { useAppState } from '@/store/appState';
-import AppSidebar from '@/components/layout/AppSidebar';
-
-// type LocalModes = 'local' | 'online' | 'collection';
+import React, { useEffect } from 'react';
+import { Routes, Route, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import MainMenu from '@/pages/MainMenu';
+import LocalGamePage from '@/pages/LocalGamePage';
+import OnlineGamePage from '@/pages/OnlineGamePage';
+import MatchPage from '@/pages/MatchPage';
+import SpectatePage from '@/pages/SpectatePage';
+import CollectionPage from '@/pages/CollectionPage';
 
 export default function App() {
-  const { mode, arenaMode } = useAppState();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { refreshUser } = useAuth();
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const authStatus = searchParams.get('auth');
+    const error = searchParams.get('error');
+
+    if (authStatus === 'success') {
+      // Refresh user data after successful login
+      refreshUser();
+      // Clean up URL
+      navigate('/', { replace: true });
+    } else if (error) {
+      console.error('[Auth] Login error:', error);
+      alert(`Erro ao fazer login: ${error}`);
+      navigate('/', { replace: true });
+    }
+  }, [searchParams, navigate, refreshUser]);
 
   return (
-    <div className={`min-h-screen mode-${mode}`}>
-      <AppSidebar expanded={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
-      <main className="flex-1">
-        {mode === 'home' ? (
-          <Home />
-        ) : mode === 'arena' && arenaMode === 'local' ? (
-          <Game isLocal />
-        ) : mode === 'arena' && arenaMode === 'online' ? (
-          <Game isLocal={false} />
-        ) : mode === 'collection' ? (
-          <DeckBuilder />
-        ) : null}
-      </main>
-    </div>
+    <Routes>
+      <Route path="/" element={<MainMenu />} />
+      <Route path="/local" element={<LocalGamePage />} />
+      <Route path="/play/online" element={<OnlineGamePage />} />
+      <Route path="/match/:matchId" element={<MatchPage />} />
+      <Route path="/spectate/:matchId" element={<SpectatePage />} />
+      <Route path="/collection" element={<CollectionPage />} />
+    </Routes>
   );
 }
