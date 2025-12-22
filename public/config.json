@@ -1,4 +1,4 @@
 {
-  "SERVER_HTTP_URL": "http://localhost:3000",
-  "SERVER_WS_URL": "ws://localhost:3001"
+  "SERVER_HTTP_URL": "https://your-breath-backend.onrender.com",
+  "SERVER_WS_URL": "wss://your-breath-backend.onrender.com"
 }
