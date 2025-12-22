@@ -25,6 +25,9 @@ coverage/
 # Prisma
 node_modules/.prisma/
 
+# Test/temp directories
+test-server/
+
 # Misc
 !.vscode/extensions.json
 
