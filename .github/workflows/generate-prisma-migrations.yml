@@ -14,9 +14,9 @@ jobs:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_USER: breath_user
-          POSTGRES_PASSWORD: breath_password
-          POSTGRES_DB: breath_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -43,7 +43,7 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
         env:
-          DATABASE_URL: postgresql://breath_user:breath_password@localhost:5432/breath_db?schema=public
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db?schema=public
       
       - name: Check for existing migrations
         id: check-migrations
@@ -61,7 +61,7 @@ jobs:
         if: steps.check-migrations.outputs.has_migrations == 'false'
         run: npx prisma migrate dev --name init --create-only
         env:
-          DATABASE_URL: postgresql://breath_user:breath_password@localhost:5432/breath_db?schema=public
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db?schema=public
       
       - name: Check for schema changes
         if: steps.check-migrations.outputs.has_migrations == 'true'
@@ -97,7 +97,7 @@ jobs:
             echo "No new migration directory created."
           fi
         env:
-          DATABASE_URL: postgresql://breath_user:breath_password@localhost:5432/breath_db?schema=public
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db?schema=public
       
       - name: Configure Git
         if: steps.check-migrations.outputs.has_migrations == 'false' || steps.check-changes.outputs.has_new_migration == 'true'
@@ -109,7 +109,6 @@ jobs:
         if: steps.check-migrations.outputs.has_migrations == 'false' || steps.check-changes.outputs.has_new_migration == 'true'
         run: |
           git add prisma/migrations/
-          git add prisma/schema.prisma
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else

@@ -216,8 +216,10 @@ npm run db:migrate
 ### Why Migrations Are Required
 
 When deploying to production environments like Render, Prisma needs migration files to create and update database tables. Without these files, you'll see errors like:
-- `No migration found in prisma/migrations`
-- `The table public.users does not exist`
+```
+No migration found in prisma/migrations
+The table public.users does not exist
+```
 
 The migration files define the database schema changes in SQL and allow Prisma to safely apply them to your production database.
 
