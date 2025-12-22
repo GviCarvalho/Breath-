@@ -20,7 +20,21 @@ Deployments happen automatically on every push to the `main` branch via GitHub A
 npm install
 ```
 
-## Configuração do Ambiente
+### Quick Start (Recomendado)
+
+Para configuração rápida com script automatizado:
+```bash
+./setup.sh
+```
+
+Este script irá:
+- Criar o arquivo `.env` se não existir
+- Iniciar o Postgres via Docker (se disponível)
+- Instalar dependências npm
+- Gerar o Prisma Client
+- Executar migrações do banco de dados
+
+### Configuração Manual
 
 1. Copie o arquivo de exemplo de variáveis de ambiente:
 ```bash

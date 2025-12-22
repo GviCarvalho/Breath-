@@ -24,8 +24,6 @@ coverage/
 
 # Prisma
 node_modules/.prisma/
-prisma/migrations/*
-!prisma/migrations/.gitkeep
 
 # Misc
 !.vscode/extensions.json
