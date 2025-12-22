@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
+import * as pg from 'pg';
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.
