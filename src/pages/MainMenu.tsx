@@ -51,6 +51,10 @@ export default function MainMenu() {
     navigate('/local?mode=hotseat');
   };
 
+  const handleOpenCollection = () => {
+    navigate('/collection');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -242,6 +246,12 @@ export default function MainMenu() {
                 className="w-full bg-indigo-600 hover:bg-indigo-500 text-white"
               >
                 👥 Hot-seat (2 jogadores)
+              </Button>
+              <Button
+                onClick={handleOpenCollection}
+                className="w-full bg-slate-600 hover:bg-slate-500 text-white"
+              >
+                🃏 Gerenciar Decks
               </Button>
             </div>
           </section>
