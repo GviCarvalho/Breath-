@@ -134,6 +134,27 @@ export default function ArenaPrototype({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [impact, impactSeq]);
 
+  // Small ambient "aliveness" pulses: flash the breath crystals when breath
+  // changes and ring-pulse the posture pip when a player switches stance.
+  const crystalsTopRef = useRef<HTMLDivElement | null>(null);
+  const crystalsBotRef = useRef<HTMLDivElement | null>(null);
+  const postureTopRef = useRef<HTMLDivElement | null>(null);
+  const postureBotRef = useRef<HTMLDivElement | null>(null);
+  const prevStats = useRef({ b1: p1.breath, b2: p2.breath, p1p: p1.posture, p2p: p2.posture });
+  useEffect(() => {
+    const pulse = (el: HTMLElement | null) => {
+      if (!el) return;
+      el.classList.remove('pulse');
+      void el.offsetWidth;
+      el.classList.add('pulse');
+    };
+    if (p1.breath !== prevStats.current.b1) pulse(crystalsBotRef.current);
+    if (p2.breath !== prevStats.current.b2) pulse(crystalsTopRef.current);
+    if (p1.posture !== prevStats.current.p1p) pulse(postureBotRef.current);
+    if (p2.posture !== prevStats.current.p2p) pulse(postureTopRef.current);
+    prevStats.current = { b1: p1.breath, b2: p2.breath, p1p: p1.posture, p2p: p2.posture };
+  }, [p1.breath, p2.breath, p1.posture, p2.posture]);
+
   const DeckStack = React.memo(({ count, onClick, disabled, flipped = false }: { count: number; onClick?: () => void; disabled?: boolean; flipped?: boolean }) => {
     const cap = Math.min(count, 8);
     const items = new Array(cap).fill(0);
@@ -209,7 +230,7 @@ export default function ArenaPrototype({
             </div>
           )}
           {/* opponent top deck removed (now shown on board corner) */}
-          <div className="postures" id="postureTop">
+          <div className="postures" id="postureTop" ref={postureTopRef}>
             <div className={'posture' + (p2.posture === 'A' ? ' active' : '')}>A</div>
             <div className={'posture' + (p2.posture === 'B' ? ' active' : '')}>B</div>
             <div className={'posture' + (p2.posture === 'C' ? ' active' : '')}>C</div>
@@ -224,7 +245,7 @@ export default function ArenaPrototype({
               {p2IsCpu ? 'CPU: ON' : 'CPU: OFF'}
             </button>
           )}
-          <div className="crystals" id="crystalsTop">
+          <div className="crystals" id="crystalsTop" ref={crystalsTopRef}>
             {new Array(MAX_BREATH).fill(0).map((_, i) => (
               <div key={i} className={'crystal' + (i < p2.breath ? ' on' : '')} />
             ))}
@@ -293,7 +314,7 @@ export default function ArenaPrototype({
                   onMouseEnter={() => onHoverCard?.(it.card)}
                   onMouseLeave={() => onHoverCard?.(null)}
                 >
-                  <div className="pile-fall">
+                  <div className="pile-fall from-top">
                     <CardFront card={it.card} />
                   </div>
                 </div>
@@ -344,7 +365,7 @@ export default function ArenaPrototype({
                   onMouseEnter={() => onHoverCard?.(it.card)}
                   onMouseLeave={() => onHoverCard?.(null)}
                 >
-                  <div className="pile-fall">
+                  <div className="pile-fall from-bottom">
                     <CardFront card={it.card} />
                   </div>
                 </div>
@@ -390,14 +411,14 @@ export default function ArenaPrototype({
           )}
           {/* player bottom deck removed (now shown on board corner) */}
           <div className="spacer" />
-          <div className="postures" id="postureBot">
+          <div className="postures" id="postureBot" ref={postureBotRef}>
             {(['A', 'B', 'C'] as Posture[]).map((p) => (
               <div key={p} className={'posture' + (p1.posture === p ? ' active' : '')} onClick={() => onClickSetP1Posture?.(p)}>
                 {p}
               </div>
             ))}
           </div>
-          <div className="crystals" id="crystalsBot">
+          <div className="crystals" id="crystalsBot" ref={crystalsBotRef}>
             {new Array(MAX_BREATH).fill(0).map((_, i) => (
               <div key={i} className={'crystal' + (i < p1.breath ? ' on' : '')} />
             ))}

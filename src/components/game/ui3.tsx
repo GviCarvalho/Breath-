@@ -124,7 +124,26 @@ export function Card({
 
   const kindColor = card.type === 'attack' ? 'border-rose-400/40' : card.type === 'defense' ? 'border-sky-400/40' : 'border-emerald-400/40';
   const disabledCls = disabled ? 'opacity-60 grayscale-[40%] cursor-not-allowed' : 'cursor-pointer';
-  const selectedGlow = selected ? 'drop-shadow-[0_0_12px_rgba(56,189,248,.45)] -translate-y-1' : '';
+  const selectedGlow = selected ? 'drop-shadow-[0_0_12px_rgba(56,189,248,.45)]' : '';
+
+  const tiltRef = React.useRef<HTMLDivElement>(null);
+  const handleTiltMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = tiltRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top) / rect.height;
+    el.style.setProperty('--tiltX', `${(0.5 - py) * 22}deg`);
+    el.style.setProperty('--tiltY', `${(px - 0.5) * 22}deg`);
+    el.style.setProperty('--shineX', `${px * 100}%`);
+    el.style.setProperty('--shineY', `${py * 100}%`);
+  };
+  const handleTiltLeave = () => {
+    const el = tiltRef.current;
+    if (!el) return;
+    el.style.setProperty('--tiltX', `0deg`);
+    el.style.setProperty('--tiltY', `0deg`);
+  };
 
   if (facedown) {
     return (
@@ -136,10 +155,13 @@ export function Card({
 
   return (
     <div
+      ref={tiltRef}
       onClick={() => onClick?.(card)}
+      onMouseMove={handleTiltMove}
+      onMouseLeave={handleTiltLeave}
       className={cn(
-        'tcg-card relative rounded-xl border bg-slate-900 overflow-hidden w-full h-full transition-all',
-        'shadow-xl hover:-translate-y-1 will-change-transform',
+        'tcg-card relative rounded-xl border bg-slate-900 overflow-hidden w-full h-full',
+        'shadow-xl will-change-transform',
         disabledCls,
         selectedGlow,
         kindColor
@@ -194,6 +216,7 @@ export function Card({
           selected && 'ring-cyan-300/50'
         )}
       />
+      <div className="card-shine" />
     </div>
   );
 }
