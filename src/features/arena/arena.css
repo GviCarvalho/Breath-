@@ -156,17 +156,18 @@ html,body{height:100%}
 /* CARTAS (containers para encaixar CardFront) */
 .card{
   --raise:0px;
+  --scale:1;
   width: var(--card-width); height: var(--card-height); border-radius:10px; border:1px solid #263149;
   background:linear-gradient(180deg, #1a2233, #121a27);
   color:var(--card-ink);
   box-shadow: 0 16px 40px rgba(0,0,0,.35);
-  transform: translateY(var(--raise)) rotate(var(--tilt, 0deg));
+  transform: translateY(var(--raise)) rotate(var(--tilt, 0deg)) scale(var(--scale));
   transform-origin: 50% 50%;
-  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  transition: transform .24s cubic-bezier(.34,1.56,.64,1), box-shadow .24s ease, filter .24s ease;
   cursor:pointer; position:relative; overflow:hidden;
 }
-.card:hover{--raise:calc(var(--card-raise) * -1); box-shadow: 0 20px 40px rgba(0,0,0,.45)}
-.card.selected{--raise:calc(var(--card-raise) * -4); filter: drop-shadow(0 0 12px rgba(112,240,255,.35))}
+.card:hover{--raise:calc(var(--card-raise) * -1); --scale:1.045; box-shadow: 0 22px 44px rgba(0,0,0,.5)}
+.card.selected{--raise:calc(var(--card-raise) * -4); --scale:1.06; filter: drop-shadow(0 0 14px rgba(112,240,255,.4))}
 
 /* MÃO DO JOGADOR (leque) */
 .hand{
@@ -177,7 +178,7 @@ html,body{height:100%}
   perspective:1400px;
   z-index:10;
 }
-.hand .card{transform: translateY(var(--raise)) rotate(var(--rot, 0deg)) translateZ(0)}
+.hand .card{transform: translateY(var(--raise)) rotate(var(--rot, 0deg)) scale(var(--scale)) translateZ(0)}
 .hand .card:nth-child(1){--rot:-8deg}
 .hand .card:nth-child(2){--rot:-4deg}
 .hand .card:nth-child(4){--rot:4deg}
@@ -236,9 +237,70 @@ html,body{height:100%}
 }
 
 /* FX e animações (iguais ao protótipo) */
-.fx.hit{background:radial-gradient(200px 200px at 50% 50%, rgba(255,91,110,.35), transparent 60%); animation: pop .52s ease}
-.fx.block{background:radial-gradient(200px 200px at 50% 50%, rgba(126,182,255,.35), transparent 60%); animation: pop .52s ease}
-.fx.dodge{background:radial-gradient(200px 200px at 50% 50%, rgba(124,245,155,.35), transparent 60%); animation: pop .52s ease}
+.fx.hit{background:radial-gradient(220px 220px at 50% 50%, rgba(255,91,110,.55), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+.fx.block{background:radial-gradient(220px 220px at 50% 50%, rgba(126,182,255,.5), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+.fx.dodge{background:radial-gradient(220px 220px at 50% 50%, rgba(124,245,155,.5), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+@keyframes fxBurst{
+  0%{ opacity:0; transform:scale(.55); }
+  30%{ opacity:1; transform:scale(1.08); }
+  100%{ opacity:0; transform:scale(1.4); }
+}
+
+/* Screen shake on a landed hit */
+.board.hit-shake{ animation: boardShake .42s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes boardShake{
+  10%,90%{ transform:translate3d(-1px,0,0); }
+  20%,80%{ transform:translate3d(3px,0,0); }
+  30%,50%,70%{ transform:translate3d(-6px,0,0); }
+  40%,60%{ transform:translate3d(6px,0,0); }
+}
+
+/* Central impact banner (event headline) */
+.impact-banner-wrap{
+  position:absolute; left:50%; top:6%; transform:translateX(-50%);
+  z-index:300; pointer-events:none; text-align:center; max-width:88%;
+}
+.impact-banner{
+  display:inline-block; padding:10px 26px; border-radius:999px;
+  font-weight:800; font-size:clamp(15px, 1.7vw, 22px); letter-spacing:.3px; white-space:nowrap;
+  color:#eaf6ff; background:linear-gradient(180deg, rgba(22,28,40,.94), rgba(10,14,22,.94));
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow: 0 14px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03);
+  text-shadow: 0 2px 8px rgba(0,0,0,.5);
+  animation: bannerPop .68s cubic-bezier(.2,.9,.25,1.4) both;
+}
+.impact-banner.tone-good{ color:#c4f7d0; border-color:rgba(124,245,155,.55); box-shadow:0 14px 40px rgba(0,0,0,.5), 0 0 34px rgba(124,245,155,.28); }
+.impact-banner.tone-bad{ color:#ffc7cd; border-color:rgba(255,91,110,.55); box-shadow:0 14px 40px rgba(0,0,0,.5), 0 0 34px rgba(255,91,110,.28); }
+.impact-banner.tone-info{ color:#ffe3a3; border-color:rgba(255,211,110,.5); box-shadow:0 14px 40px rgba(0,0,0,.5), 0 0 30px rgba(255,211,110,.22); }
+.impact-banner.tone-ko{ color:#fff; border-color:rgba(255,91,110,.75); font-size:clamp(20px,2.6vw,32px); box-shadow:0 16px 54px rgba(0,0,0,.6), 0 0 48px rgba(255,91,110,.45); }
+@keyframes bannerPop{
+  0%{ opacity:0; transform: translateY(8px) scale(.82); }
+  16%{ opacity:1; transform: translateY(0) scale(1.07); }
+  26%{ transform: translateY(0) scale(1); }
+  78%{ opacity:1; transform: translateY(0) scale(1); }
+  100%{ opacity:0; transform: translateY(-10px) scale(.96); }
+}
+
+/* Floating combat text (damage / block / dodge / counter / KO) */
+.floaters{ position:absolute; inset:0; pointer-events:none; z-index:60; overflow:visible; }
+.floater{
+  position:absolute; left:50%; top:20%; transform:translate(-50%,-50%);
+  font-weight:800; font-size:20px; letter-spacing:.4px; white-space:nowrap;
+  text-shadow: 0 2px 10px rgba(0,0,0,.65);
+  animation: floatUp 1s cubic-bezier(.15,.7,.3,1) forwards;
+}
+.floater.dmg{ color:#ff8a97; font-size:24px; }
+.floater.block{ color:#8fc6ff; }
+.floater.dodge{ color:#8bf3a7; }
+.floater.counter{ color:#ffd36e; }
+.floater.ko{ color:#ff5b6e; font-size:28px; }
+@keyframes floatUp{
+  0%{ opacity:0; transform: translate(-50%,-40%) scale(.7); }
+  18%{ opacity:1; transform: translate(-50%, -70%) scale(1.15); }
+  35%{ transform: translate(-50%, -85%) scale(1); }
+  100%{ opacity:0; transform: translate(-50%, -160%) scale(1); }
+}
+
 /* Card pile drop effect */
 .pile-drop{ animation: pileFade .18s ease; will-change: opacity }
 @keyframes pileFade { from { opacity: 0 } to { opacity: 1 } }
@@ -260,12 +322,6 @@ html,body{height:100%}
 .counter-badge span{ text-shadow: 0 0 12px rgba(255,211,110,.35); }
 .counter-bar{ width:120px; height:6px; border-radius:999px; background:#2b2a22; overflow:hidden; border:1px solid #3b2d0e }
 .counter-bar .fill{ height:100%; background:linear-gradient(90deg,#ffd36e,#ffecb0); box-shadow:0 0 8px rgba(255,211,110,.45) inset; transition: width .1s linear }
-@keyframes pop{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
-.attack-tilt{--tilt:-10deg}
-.slide-up{animation: su .35s ease forwards}
-.slide-down{animation: sd .35s ease forwards}
-@keyframes su{to{transform: translateY(min(-140px, -10vh)) scale(1.03)}}
-@keyframes sd{to{transform: translateY(min(140px, 10vh)) scale(1.03)}}
 .shake{animation: shake .3s}
 @keyframes shake{25%{transform: translateX(-6px)}50%{transform: translateX(6px)}75%{transform: translateX(-3px)}100%{transform: translateX(0)}}
 /* ===== HOTFIX: ocupar a viewport e tirar o fundo branco ===== */

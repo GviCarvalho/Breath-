@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { BreathBar, CardBack, CardFront, FlipCard, bannerFor, floaterText } from '@/components/game/ui3';
+import { bannerFor, floaterText } from '@/components/game/ui3';
 import { useMatchConnection } from '@/hooks/useMatchConnection';
 import { makeDeck, initialHandSetup, resolveRound, canPlayCard, hasAnyAvailableMove, refillHand, drawCards, MAX_BREATH, INITIAL_HAND_SIZE, HAND_SIZE as ENGINE_HAND_SIZE, type TcgCard, type PlayerState, type Priority, type ImpactKind, type DefeatTag } from '@/engine';
 import { playSound } from '@/lib/sound';
@@ -10,7 +9,6 @@ import { getAllKatas } from '@/data/katas';
 import CpuPlayer from './CpuPlayer';
 import ArenaPrototype from '@/components/game/ArenaPrototype';
 import { useAppState } from '@/store/appState';
-import PlayerInterface from './PlayerInterface';
 import { Posture } from '../../engine/types'; // Adiciona a importação do tipo Posture
 import { CpuPlayerState } from '@/engine/types';
 
@@ -19,8 +17,9 @@ const HAND_SIZE = ENGINE_HAND_SIZE; // Resolve o conflito de nome
 export default function Game({ isLocal }: { isLocal: boolean }) {
   const { playerName, setPlayerName, lastMatchId, setLastMatchId, activeDeck } = useAppState();
   const [impact, setImpact] = useState<ImpactKind>('none');
+  const [impactSeq, setImpactSeq] = useState(0);
   const [banner, setBanner] = useState<string | null>(null);
-  const [floaters, setFloaters] = useState<{ id: string; text: string }[]>([]);
+  const [floaters, setFloaters] = useState<{ id: string; text: string; side: 'p1' | 'p2' }[]>([]);
   const [log, setLog] = useState<string[]>([]);
   const [gameOver, setGameOver] = useState<DefeatTag>(null);
   const [showGameOverModal, setShowGameOverModal] = useState(false);
@@ -60,13 +59,27 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     }
   };
 
-  const handleFloater = (text: string) => {
+  const handleFloater = (text: string, side: 'p1' | 'p2') => {
     const id = Math.random().toString(36).slice(2, 9);
-    setFloaters((arr) => [...arr, { id, text }]);
+    setFloaters((arr) => [...arr, { id, text, side }]);
     const handle = window.setTimeout(() => {
       setFloaters((arr) => arr.filter((f) => f.id !== id));
-    }, 900);
+    }, 1000);
     timeoutRefs.current.push(handle);
+  };
+
+  // Shows one timeline tick: flashes the impact fx/shake (with a fresh seq so
+  // the CSS animation replays even if the same kind repeats) and spawns any
+  // floating combat text for both sides.
+  const showImpactTick = (kind: ImpactKind) => {
+    setImpact(kind);
+    setImpactSeq((n) => n + 1);
+    setBanner(bannerFor(kind));
+    try { const s = sfxForImpact(kind); if (s) playSound(s, 0.85); } catch {}
+    const f1 = floaterText(kind, 'p1');
+    if (f1) handleFloater(f1, 'p1');
+    const f2 = floaterText(kind, 'p2');
+    if (f2) handleFloater(f2, 'p2');
   };
 
   useEffect(() => {
@@ -81,13 +94,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
 
     let cursor = 0;
     events.forEach((kind) => {
-      const handle = window.setTimeout(() => {
-        setImpact(kind);
-        setBanner(bannerFor(kind));
-        try { const s = sfxForImpact(kind); if (s) playSound(s, 0.85); } catch {}
-        const floater = floaterText(kind, 'p1');
-        if (floater) handleFloater(floater);
-      }, cursor);
+      const handle = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(handle);
       cursor += 450;
     });
@@ -120,15 +127,6 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
 
 
   // A lógica de decisão da CPU fica exclusivamente dentro do componente CpuPlayer
-
-  useEffect(() => {
-    if (events.length > 0) {
-      events.forEach((event) => {
-        setImpact(event);
-        setBanner(`Event: ${event}`);
-      });
-    }
-  }, [events]);
 
   const createLocalMatch = () => {
     const matchId = `local-${Date.now()}`;
@@ -249,13 +247,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     const step = 450;
     const oriented: ImpactKind[] = res.events.length ? res.events : ['none' as ImpactKind];
     oriented.forEach((kind) => {
-      const h = window.setTimeout(() => {
-        setImpact(kind);
-        setBanner(bannerFor(kind));
-        try { const s = sfxForImpact(kind); if (s) playSound(s, 0.85); } catch {}
-        const floater = floaterText(kind, 'p1');
-        if (floater) handleFloater(floater);
-      }, cursor);
+      const h = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(h);
       cursor += step;
     });
@@ -478,13 +470,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     const step = 450;
   const oriented: ImpactKind[] = result.events.length ? result.events : ['none' as ImpactKind];
     oriented.forEach((kind) => {
-      const h = window.setTimeout(() => {
-        setImpact(kind);
-        setBanner(bannerFor(kind));
-        try { const s = sfxForImpact(kind); if (s) playSound(s, 0.85); } catch {}
-        const floater = floaterText(kind, 'p1');
-        if (floater) handleFloater(floater);
-      }, cursor);
+      const h = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(h);
       cursor += step;
     });
@@ -596,13 +582,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     const step = 450;
   const oriented: ImpactKind[] = res.events.length ? res.events : ['none' as ImpactKind];
     oriented.forEach((kind) => {
-      const h = window.setTimeout(() => {
-        setImpact(kind);
-        setBanner(bannerFor(kind));
-        try { const s = sfxForImpact(kind); if (s) playSound(s, 0.85); } catch {}
-        const floater = floaterText(kind, 'p1');
-        if (floater) handleFloater(floater);
-      }, cursor);
+      const h = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(h);
       cursor += step;
     });
@@ -797,15 +777,6 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
   // Renderização
   return (
     <div>
-      <h1>Arena Central</h1>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-        <button
-          onClick={() => setPlayer2((prev) => ({ ...prev, isCPU: !prev.isCPU }))}
-          className="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md"
-        >
-          {player2.isCPU ? 'Disable CPU' : 'Enable CPU'}
-        </button>
-      </div>
       <ArenaPrototype
         p1={{ ...p1, facedownCount: p1.hand.length }}
         p2={{ ...p2, facedownCount: p2.hand.length }}
@@ -824,6 +795,12 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
         waitingForOpponent={waitingForOpponent}
         showP1Facedown={showP1Facedown}
         showP2Facedown={showP2Facedown}
+        impact={impact}
+        impactSeq={impactSeq}
+        banner={banner}
+        floaters={floaters}
+        p2IsCpu={player2.isCPU}
+        onToggleP2Cpu={() => setPlayer2((prev) => ({ ...prev, isCPU: !prev.isCPU }))}
         onClickP1Card={(card) => handlePlayCard(card, 'player1')}
         onClickP2Card={(card) => handlePlayCard(card, 'player2')}
         onHoverCard={setHoverCard}
@@ -855,34 +832,16 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
           </div>
         </div>
       )}
-      <div>
-        <PlayerInterface
-          player={p1}
-          onPlayCard={(card) => handlePlayCard(card, 'player1')}
-          onSetPosture={(posture) => handleSetPosture(posture, 'player1')}
-          selectedCard={p1SelectedCard}
+      {player2.isCPU && (
+        <CpuPlayer
+          player={p2}
+          onPlayCard={(card) => handlePlayCard(card, 'player2')}
+          onSetPosture={(posture) => handleSetPosture(posture, 'player2')}
+          onDraw={() => handleDrawCard('player2')}
+          onPass={() => handlePassTurn('player2')}
+          selectedCard={p2SelectedCard}
         />
-        {player2.isCPU ? (
-          <CpuPlayer
-            player={p2}
-            onPlayCard={(card) => handlePlayCard(card, 'player2')}
-            onSetPosture={(posture) => handleSetPosture(posture, 'player2')}
-            onDraw={() => handleDrawCard('player2')}
-            onPass={() => handlePassTurn('player2')}
-            selectedCard={p2SelectedCard}
-          />
-        ) : (
-          <PlayerInterface
-            player={p2}
-            onPlayCard={(card) => handlePlayCard(card, 'player2')}
-            onSetPosture={(posture) => handleSetPosture(posture, 'player2')}
-            selectedCard={p2SelectedCard}
-          />
-        )}
-        <button onClick={handleResolveRound} disabled={!p1SelectedCard || !p2SelectedCard}>
-          Resolver Rodada
-        </button>
-      </div>
+      )}
     </div>
   );
 }

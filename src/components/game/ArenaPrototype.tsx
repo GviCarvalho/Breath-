@@ -1,10 +1,63 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '@/features/arena/arena.css';
-import { type TcgCard, HAND_SIZE, MAX_BREATH } from '@/engine';
+import { type TcgCard, type ImpactKind, HAND_SIZE, MAX_BREATH } from '@/engine';
 import { CardFront, FlipCard, CardBack } from './ui3';
 import { setupResponsiveCards } from '@/lib/responsive';
 
 type Posture = 'A' | 'B' | 'C';
+
+type Floater = { id: string; text: string; side: 'p1' | 'p2' };
+
+// Which slot flashes and with what effect for a given engine event.
+function fxFor(kind?: ImpactKind | null): { side: 'p1' | 'p2'; cls: 'hit' | 'block' | 'dodge' } | null {
+  switch (kind) {
+    case 'p1_hits':
+    case 'defeat_p2':
+      return { side: 'p2', cls: 'hit' };
+    case 'p2_hits':
+    case 'defeat_p1':
+      return { side: 'p1', cls: 'hit' };
+    case 'blocked_p1':
+      return { side: 'p1', cls: 'block' };
+    case 'blocked_p2':
+      return { side: 'p2', cls: 'block' };
+    case 'dodged_p1':
+      return { side: 'p1', cls: 'dodge' };
+    case 'dodged_p2':
+      return { side: 'p2', cls: 'dodge' };
+    default:
+      return null;
+  }
+}
+
+function bannerTone(kind?: ImpactKind | null): string {
+  switch (kind) {
+    case 'p1_hits':
+      return 'good';
+    case 'p2_hits':
+      return 'bad';
+    case 'defeat_p1':
+    case 'defeat_p2':
+      return 'ko';
+    case 'blocked_p1':
+    case 'blocked_p2':
+    case 'dodged_p1':
+    case 'dodged_p2':
+    case 'extra_granted_p1':
+    case 'extra_granted_p2':
+      return 'info';
+    default:
+      return 'info';
+  }
+}
+
+function floaterTone(text: string): string {
+  if (text === 'BLOCK') return 'block';
+  if (text === 'DODGE') return 'dodge';
+  if (text === 'COUNTER') return 'counter';
+  if (text === 'KO') return 'ko';
+  return 'dmg';
+}
 
 export interface ArenaProps {
   p1: { name: string; posture: Posture; breath: number; hand: TcgCard[]; revealed?: TcgCard | null; facedownCount?: number };
@@ -25,6 +78,12 @@ export interface ArenaProps {
   waitingForOpponent?: boolean;
   showP1Facedown?: boolean;
   showP2Facedown?: boolean;
+  impact?: ImpactKind;
+  impactSeq?: number;
+  banner?: string | null;
+  floaters?: Floater[];
+  p2IsCpu?: boolean;
+  onToggleP2Cpu?: () => void;
 
   onClickP1Card?: (c: TcgCard, idx: number) => void;
   onClickP2Card?: (c: TcgCard, idx: number) => void;
@@ -40,6 +99,8 @@ export default function ArenaPrototype({
   selectedIdx, invalidIdx, selectedP2Idx, invalidP2Idx,
   onClickSetP1Posture, onClickP1Card, onClickP2Card, onHoverCard, hoverCard, onClickDraw, onClickDrawP2,
   extraPending = 'none', decisionProgress = 0, waitingForOpponent = false, showP1Facedown = false, showP2Facedown = false,
+  impact = 'none', impactSeq = 0, banner = null, floaters = [],
+  p2IsCpu, onToggleP2Cpu,
 }: ArenaProps) {
   // Inicializa o sistema responsivo
   useEffect(() => {
@@ -47,6 +108,31 @@ export default function ArenaPrototype({
     return () => cleanup();
   }, []);
   const CardBackImg = new URL('../../Assets/art/cards/CardBack.png', import.meta.url).href;
+
+  const boardRef = useRef<HTMLElement | null>(null);
+  const fxTopRef = useRef<HTMLDivElement | null>(null);
+  const fxBotRef = useRef<HTMLDivElement | null>(null);
+
+  // Replay the hit/block/dodge burst (and a screen shake for hits) whenever a
+  // new impact event comes in. Uses classList + a forced reflow instead of a
+  // React `key` remount so the slot's pile/flip state isn't disturbed.
+  useEffect(() => {
+    const info = fxFor(impact);
+    if (!info) return;
+    const el = info.side === 'p2' ? fxTopRef.current : fxBotRef.current;
+    if (el) {
+      el.classList.remove('hit', 'block', 'dodge');
+      void el.offsetWidth;
+      el.classList.add(info.cls);
+    }
+    if (info.cls === 'hit' && boardRef.current) {
+      const b = boardRef.current;
+      b.classList.remove('hit-shake');
+      void b.offsetWidth;
+      b.classList.add('hit-shake');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [impact, impactSeq]);
 
   const DeckStack = React.memo(({ count, onClick, disabled, flipped = false }: { count: number; onClick?: () => void; disabled?: boolean; flipped?: boolean }) => {
     const cap = Math.min(count, 8);
@@ -128,6 +214,16 @@ export default function ArenaPrototype({
             <div className={'posture' + (p2.posture === 'B' ? ' active' : '')}>B</div>
             <div className={'posture' + (p2.posture === 'C' ? ' active' : '')}>C</div>
           </div>
+          {onToggleP2Cpu && (
+            <button
+              className="btn"
+              style={{ padding: '4px 10px', fontSize: 11 }}
+              onClick={onToggleP2Cpu}
+              title="Alternar entre IA e hot-seat"
+            >
+              {p2IsCpu ? 'CPU: ON' : 'CPU: OFF'}
+            </button>
+          )}
           <div className="crystals" id="crystalsTop">
             {new Array(MAX_BREATH).fill(0).map((_, i) => (
               <div key={i} className={'crystal' + (i < p2.breath ? ' on' : '')} />
@@ -143,14 +239,24 @@ export default function ArenaPrototype({
         </div>
 
         {/* Center board */}
-        <main className="board">
+        <main className="board" ref={boardRef}>
           {/* Scoreboard overlay */}
           <div className="panel" style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', padding: '6px 10px', zIndex: 200, textAlign: 'center' }}>
             <strong>Score:</strong> {p1.name || 'You'} {p1Wins} x {p2Wins} {p2.name || 'Opponent'}
           </div>
+          {banner && (
+            <div className="impact-banner-wrap">
+              <div key={impactSeq} className={`impact-banner tone-${bannerTone(impact)}`}>{banner}</div>
+            </div>
+          )}
           <div className="lane top">
             <div className={"slot" + (extraPending === 'p2' ? ' counter-open' : '')} id="slotTop">
-              <div className="fx" />
+              <div className="fx" ref={fxTopRef} />
+              <div className="floaters">
+                {floaters.filter((f) => f.side === 'p2').map((f) => (
+                  <div key={f.id} className={`floater ${floaterTone(f.text)}`}>{f.text}</div>
+                ))}
+              </div>
               {(showP2Facedown || p2?.revealed) && (
                 <div
                   className="card"
@@ -196,7 +302,12 @@ export default function ArenaPrototype({
           </div>
           <div className="lane bot">
             <div className={"slot active" + (extraPending === 'p1' ? ' counter-open' : '')} id="slotBot">
-              <div className="fx" />
+              <div className="fx" ref={fxBotRef} />
+              <div className="floaters">
+                {floaters.filter((f) => f.side === 'p1').map((f) => (
+                  <div key={f.id} className={`floater ${floaterTone(f.text)}`}>{f.text}</div>
+                ))}
+              </div>
               {(showP1Facedown || p1?.revealed) && (
                 <div
                   className="card"
