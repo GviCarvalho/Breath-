@@ -1,0 +1,199 @@
+/* "Dojo" visual language - light, blueprint-like, martial-arts training
+   facility metaphor. This is the flagship implementation of the app's new
+   direction (see conversation): thin dark outlines on a pale canvas, bold
+   condensed display type, and one olive-green accent sampled directly from
+   the game's own breath-token art so the new look still reads as the same
+   game. Scoped under .dojo-theme so it can coexist with the arena's dark
+   HUD theme until that gets its own pass.
+*/
+.dojo-theme {
+  --dojo-canvas-0: #f4f5f2;
+  --dojo-canvas-1: #e3e5e0;
+  --dojo-ink: #1a1b18;
+  --dojo-muted: #6b6f64;
+  --dojo-panel: #fbfbf9;
+  --dojo-border: #1a1b18;
+  --dojo-border-soft: #c9cbc1;
+  --dojo-accent: #7c9142;
+  --dojo-accent-dark: #5c6e2f;
+  --dojo-accent-pale: #e6ecd6;
+  --dojo-gray-0: #e9ebe3;
+  --dojo-gray-1: #c3c6b9;
+  --dojo-gray-2: #8b8f80;
+
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 600px at 50% -10%, #ffffff 0%, var(--dojo-canvas-0) 55%, var(--dojo-canvas-1) 100%);
+  color: var(--dojo-ink);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial;
+}
+
+.dojo-display {
+  font-family: 'KanedaGothicBold', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  font-weight: 700;
+}
+
+/* ---- Header ---- */
+.dojo-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 78px 20px 30px;
+  text-align: center;
+}
+.dojo-header-corner { position: absolute; top: 20px; right: 20px; }
+.dojo-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.dojo-logo-row { display: flex; align-items: center; gap: 12px; }
+.dojo-logo-token {
+  width: 84px; height: 84px; border-radius: 16px;
+  border: 3px solid var(--dojo-border);
+  background: var(--dojo-panel);
+  display: grid; place-items: center;
+  padding: 9px;
+  box-shadow: 0 10px 24px rgba(20, 22, 16, .1);
+}
+.dojo-logo-token img { width: 100%; height: 100%; object-fit: contain; }
+.dojo-title { font-size: clamp(52px, 10vw, 88px); line-height: .95; color: var(--dojo-ink); }
+
+/* ---- Panels ---- */
+.dojo-panel {
+  position: relative;
+  background: var(--dojo-panel);
+  border: 2px solid var(--dojo-border);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(20, 22, 16, .06);
+}
+.dojo-panel-head {
+  padding: 16px 22px;
+  text-align: center;
+  background: var(--dojo-gray-0);
+  border-bottom: 2px solid var(--dojo-border);
+  border-radius: 8px 8px 0 0;
+}
+.dojo-panel-title { font-size: clamp(22px, 3vw, 30px); color: var(--dojo-ink); }
+.dojo-panel-sub {
+  font-size: 11px; color: var(--dojo-muted); text-transform: none;
+  letter-spacing: normal; font-weight: 500; margin-top: 2px;
+}
+.dojo-panel-body { padding: 16px 22px 22px; display: flex; flex-direction: column; gap: 12px; }
+
+/* ---- Combate panel: name + two big mode buttons, nothing else ---- */
+.dojo-combate-title {
+  font-size: clamp(30px, 5vw, 44px);
+  text-align: center;
+  padding: 26px 0 6px;
+  color: var(--dojo-ink);
+}
+.dojo-mode-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  padding: 10px 22px 26px;
+}
+.dojo-mode-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 30px 14px; border-radius: 10px; border: 2px solid var(--dojo-border);
+  background: var(--dojo-ink); color: #fff;
+  font-family: 'KanedaGothicBold', system-ui, sans-serif;
+  text-transform: uppercase; letter-spacing: .04em; font-weight: 700; font-size: clamp(16px, 2.4vw, 20px);
+  cursor: pointer; transition: background .15s ease, transform .12s ease;
+}
+.dojo-mode-btn:hover:not(:disabled) { background: var(--dojo-accent-dark); }
+.dojo-mode-btn:active:not(:disabled) { transform: scale(.98); }
+.dojo-mode-btn.is-muted, .dojo-mode-btn:disabled {
+  background: var(--dojo-gray-0); color: var(--dojo-gray-2); border-color: var(--dojo-gray-1);
+  cursor: not-allowed;
+}
+
+/* ---- Badge ("Em breve") ---- */
+.dojo-badge {
+  display: inline-flex; align-items: center; font-family: inherit;
+  text-transform: uppercase; font-weight: 700; letter-spacing: .04em;
+  font-size: 10px; padding: 3px 8px; border-radius: 999px;
+  background: var(--dojo-accent); color: #fff;
+}
+
+/* ---- Buttons ---- */
+.dojo-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 11px 16px; border-radius: 8px;
+  border: 2px solid var(--dojo-border); background: var(--dojo-panel); color: var(--dojo-ink);
+  font-weight: 700; letter-spacing: .02em; font-size: 14px;
+  cursor: pointer; transition: transform .12s ease, background .15s ease, color .15s ease;
+}
+.dojo-btn:hover:not(:disabled) { background: var(--dojo-ink); color: #fff; }
+.dojo-btn:active:not(:disabled) { transform: scale(.98); }
+.dojo-btn:disabled { background: var(--dojo-gray-0); color: var(--dojo-gray-2); border-color: var(--dojo-gray-1); cursor: not-allowed; }
+.dojo-btn-primary { background: var(--dojo-accent); border-color: var(--dojo-accent-dark); color: #fff; }
+.dojo-btn-primary:hover:not(:disabled) { background: var(--dojo-accent-dark); }
+.dojo-btn-ghost { background: transparent; }
+.dojo-btn img { width: 18px; height: 18px; flex-shrink: 0; }
+
+.dojo-input {
+  flex: 1; min-width: 0; padding: 10px 12px; border-radius: 8px;
+  border: 2px solid var(--dojo-border-soft); background: #fff; color: var(--dojo-ink);
+  font-size: 14px;
+}
+.dojo-input::placeholder { color: #9a9d92; }
+.dojo-input:focus { outline: none; border-color: var(--dojo-accent); }
+.dojo-input:disabled { opacity: .6; cursor: not-allowed; }
+.dojo-field-row { display: flex; gap: 8px; }
+.dojo-hint { font-size: 11px; color: var(--dojo-muted); margin: -6px 0 0; }
+
+/* ---- Dojo (local play) panel: tatami-mat texture ---- */
+.dojo-tatami {
+  background:
+    repeating-linear-gradient(90deg, rgba(26,27,24,.05) 0 2px, transparent 2px 26px),
+    repeating-linear-gradient(0deg, rgba(26,27,24,.035) 0 2px, transparent 2px 26px),
+    linear-gradient(165deg, #ece3c6, #d9cd9e);
+  border-color: var(--dojo-border);
+}
+.dojo-tatami .dojo-panel-title,
+.dojo-tatami .dojo-panel-sub { color: var(--dojo-ink); }
+.dojo-tatami .dojo-btn {
+  background: rgba(251, 251, 249, .85); border-color: rgba(26,27,24,.5);
+  backdrop-filter: blur(2px);
+}
+.dojo-tatami .dojo-btn:hover:not(:disabled) { background: var(--dojo-ink); }
+
+/* ---- Técnicas (decks/manual) panel: locker texture ---- */
+.dojo-locker {
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 2px, transparent 2px 16px),
+    linear-gradient(150deg, #3d4038, #24261f);
+  border-color: var(--dojo-border);
+  color: #f1f2ec;
+  overflow: hidden;
+}
+.dojo-locker .dojo-panel-title { color: #f1f2ec; }
+.dojo-locker .dojo-panel-sub { color: #b9bcae; }
+.dojo-locker .dojo-btn {
+  background: rgba(20, 21, 17, .55); border-color: rgba(241,242,236,.35); color: #f1f2ec;
+}
+.dojo-locker .dojo-btn:hover:not(:disabled) { background: var(--dojo-accent); border-color: var(--dojo-accent); }
+.dojo-locker .dojo-btn:disabled { color: #8d9184; }
+.dojo-locker .dojo-btn img { filter: invert(1) brightness(1.6); }
+/* hinge */
+.dojo-locker::after {
+  content: '';
+  position: absolute; top: 18px; bottom: 18px; right: 14px; width: 6px;
+  background: repeating-linear-gradient(180deg, #9a9d92 0 6px, transparent 6px 22px);
+  border-radius: 3px; opacity: .55;
+}
+
+/* ---- Circuito (ranking) - deliberately understated per the concept ---- */
+.dojo-circuito {
+  text-align: center; padding: 18px 0 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.dojo-circuito-title {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 16px; color: var(--dojo-muted);
+}
+
+.dojo-grid-2 { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 760px) {
+  .dojo-grid-2 { grid-template-columns: 1fr 1fr; }
+}

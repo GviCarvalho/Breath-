@@ -285,12 +285,11 @@ export default function DeckBuilderHtml() {
     <>
     <div className="deckbuilder-theme db-wrap min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="db-header px-4 py-3 mb-4 flex items-center justify-between rounded-xl">
-          <h2 className="text-sm font-semibold text-slate-200 tracking-wide">Breath! • Decks</h2>
+        <div className="db-header px-5 py-4 mb-4 flex items-center justify-between rounded-xl">
+          <h2 className="db-display text-lg">Breath! · Decks</h2>
           <div className="flex items-center gap-2">
-            <button onClick={() => setTab('collection')} className={`text-xs px-3 py-1 rounded-full ${tab==='collection' ? 'bg-white/10 text-white border border-white/20' : 'bg-transparent text-slate-300 border border-white/10'}`}>Coleção</button>
-            <button onClick={() => setTab('builder')} className={`text-xs px-3 py-1 rounded-full ${tab==='builder' ? 'bg-white/10 text-white border border-white/20' : 'bg-transparent text-slate-300 border border-white/10'}`}>Builder</button>
-            
+            <button onClick={() => setTab('collection')} className={`db-display text-xs px-4 py-1.5 rounded-full border-2 ${tab==='collection' ? 'bg-[#1a1b18] text-white border-[#1a1b18]' : 'bg-transparent text-[#6b6f64] border-black/15'}`}>Coleção</button>
+            <button onClick={() => setTab('builder')} className={`db-display text-xs px-4 py-1.5 rounded-full border-2 ${tab==='builder' ? 'bg-[#1a1b18] text-white border-[#1a1b18]' : 'bg-transparent text-[#6b6f64] border-black/15'}`}>Builder</button>
           </div>
         </div>
 
@@ -301,7 +300,7 @@ export default function DeckBuilderHtml() {
               <button className="text-sm px-3 py-1 db-pill" onClick={importSeedToCollection}>Import Seed → Coleção</button>
               <button className="text-sm px-3 py-1 db-pill" onClick={exportCollectionJSON}>Exportar JSON</button>
               {activeDeck ? (
-                <span className="text-xs px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/30 text-emerald-200">
+                <span className="text-xs px-2 py-1 rounded border-2 bg-[#e6ecd6] border-[#7c9142]/50 text-[#5c6e2f] font-semibold">
                   Selecionado: {activeDeck.name}
                 </span>
               ) : null}
@@ -321,10 +320,10 @@ export default function DeckBuilderHtml() {
             <div className="col-span-7 db-card">
                 <div className="db-content" style={{ ['--card-width' as any]: density === 'compact' ? '120px' : '165px', ['--card-height' as any]: density === 'compact' ? '180px' : '240px' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-medium text-slate-200">Catálogo</div>
+                    <div className="db-display text-sm">Catálogo</div>
                     <div className="flex items-center gap-2">
                       <button
-                        className={`ml-2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/6 text-slate-100 hover:bg-white/12 ${toggleSpinning ? 'spin' : ''}`}
+                        className={`ml-2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-black/5 border-2 border-black/15 text-[#1a1b18] hover:bg-black/10 ${toggleSpinning ? 'spin' : ''}`}
                         title={`Alternar densidade (atualmente ${density})`}
                         aria-label="Alternar densidade"
                         onClick={() => {
@@ -357,7 +356,7 @@ export default function DeckBuilderHtml() {
             {/* Deck list + seed tools */}
             <div className="col-span-5 db-card">
               <div className="db-content">
-                <h2 className="font-medium mb-2">Deck List</h2>
+                <h2 className="db-display text-sm mb-2">Deck List</h2>
                 <div className="grid grid-cols-3 gap-3 max-h-[56vh] overflow-auto db-scroll">
                   {deckCards.map((c, i) => (
                     <div
@@ -479,11 +478,11 @@ export default function DeckBuilderHtml() {
                       setDragOverIndex(null);
                     }}
                   >
-                    <div className="text-xs text-slate-400">Drop here to append</div>
+                    <div className="text-xs text-[#6b6f64]">Drop here to append</div>
                   </div>
                 </div>
                 {deckIdx.length === 0 && (
-                  <div className="empty mt-2 text-slate-400 border border-dashed border-slate-700/40 rounded p-3">
+                  <div className="empty mt-2 text-[#6b6f64] border-2 border-dashed border-black/15 rounded p-3">
                     No cards yet. Click the Catalog to add. (Max. 21)
                   </div>
                 )}
@@ -494,7 +493,7 @@ export default function DeckBuilderHtml() {
                   <div className="db-pill text-center">Def: {countByType.d}</div>
                   <div className="db-pill text-center">Dodge: {countByType.g}</div>
                 </div>
-                <canvas ref={chartRef} className="w-full h-[70px] mt-2 rounded border border-white/10"></canvas>
+                <canvas ref={chartRef} className="w-full h-[70px] mt-2 rounded border-2 border-black/10"></canvas>
 
                 <div className="mt-3">
                   <div className="db-seedbox" title={buildSeedV1FromIdx(deckIdx) ?? ''}>
@@ -509,7 +508,7 @@ export default function DeckBuilderHtml() {
                   </div>
                   <div className="mt-3 flex items-center gap-2">
                     <button className="text-sm px-3 py-1 db-pill" onClick={saveToCollection}>Salvar na Coleção</button>
-                    <input value={deckName} onChange={(e) => setDeckName(e.target.value)} placeholder="Deck name" className="px-2 py-1 border rounded text-sm bg-transparent text-slate-200 flex-1" />
+                    <input value={deckName} onChange={(e) => setDeckName(e.target.value)} placeholder="Deck name" className="px-2 py-1 rounded text-sm flex-1" />
                   </div>
                 </div>
               </div>
@@ -557,12 +556,12 @@ export default function DeckBuilderHtml() {
         } catch {}
         return (
           <div style={{ position: 'fixed', left: 0, top: 0, pointerEvents: 'none', zIndex: 9999 }}>
-            <div style={{ position: 'absolute', left: previewPos.x, top: previewPos.y, width: density === 'compact' ? 120 : 165, pointerEvents: 'none', transform: 'translate(-8px, -8px) scale(1.02)', boxShadow: '0 30px 60px rgba(0,0,0,.45)', display: 'flex', alignItems: 'flex-end', gap: 6 }} className="db-3d db-tilt">
+            <div style={{ position: 'absolute', left: previewPos.x, top: previewPos.y, width: density === 'compact' ? 120 : 165, pointerEvents: 'none', transform: 'translate(-8px, -8px) scale(1.02)', boxShadow: '0 30px 60px rgba(20,22,16,.35)', display: 'flex', alignItems: 'flex-end', gap: 6 }} className="db-3d db-tilt">
               <div style={{ transform: 'translateY(6px) rotate(-6deg)', width: 28, height: 28 }} aria-hidden>
                 {/* small hand icon to imply holding */}
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 12c0-1.1.9-2 2-2h1v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9a2 2 0 0 0-2-2h-1" stroke="#fff" strokeOpacity="0.92" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M9 6v2" stroke="#fff" strokeOpacity="0.92" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 12c0-1.1.9-2 2-2h1v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9a2 2 0 0 0-2-2h-1" stroke="#1a1b18" strokeOpacity="0.85" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M9 6v2" stroke="#1a1b18" strokeOpacity="0.85" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
               <div style={{ pointerEvents: 'none' }}>

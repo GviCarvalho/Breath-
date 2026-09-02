@@ -160,7 +160,7 @@ export function Card({
       onMouseMove={handleTiltMove}
       onMouseLeave={handleTiltLeave}
       className={cn(
-        'tcg-card relative rounded-xl border bg-slate-900 overflow-hidden w-full h-full',
+        'tcg-card relative rounded-xl border-2 border-black bg-white overflow-hidden w-full h-full',
         'shadow-xl will-change-transform',
         disabledCls,
         selectedGlow,

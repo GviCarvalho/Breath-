@@ -58,7 +58,7 @@ export default function CardBrowser({ options, onAdd, density = 'comfortable', o
   return (
     <div className="db-content">
       <div className="mb-2 flex flex-col gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search cards..." className="w-full text-sm px-2 py-1 border rounded" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search cards..." className="w-full text-sm px-2 py-1 rounded" />
         <div className="flex items-center gap-2">
           <Pill active={type==='all'} onClick={() => setType('all')}>All</Pill>
           <Pill active={type==='attack'} onClick={() => setType('attack')}>Attack</Pill>

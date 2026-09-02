@@ -39,7 +39,7 @@ function StatBarCompetitive({ stats }: { stats: DeckStats }) {
   // Render segments side-by-side (no overlap) so they always fill the full width.
   let leftAcc = 0;
   return (
-    <div className="relative mt-2 h-2 w-full rounded overflow-hidden border border-white/10 bg-white/5">
+    <div className="relative mt-2 h-2 w-full rounded overflow-hidden border border-black/10 bg-black/5">
       {segs.map((s, i) => {
         const left = leftAcc;
         leftAcc += s.p;
@@ -65,7 +65,7 @@ function Kebab({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-8 h-8 grid place-items-center rounded bg-white/6 border border-white/10 text-slate-100 shadow-sm hover:bg-white/12"
+      className="w-8 h-8 grid place-items-center rounded bg-black/5 border border-black/15 text-[#1a1b18] shadow-sm hover:bg-black/10"
       title="Mais ações"
     >
       ⋮
@@ -140,7 +140,7 @@ function DeckCard({
   }, [menuOpen]);
 
   return (
-    <div className={`rounded-xl overflow-hidden border ${isActive ? 'border-emerald-400/60 ring-1 ring-emerald-300/40' : 'border-white/10'} bg-[#0f1424] shadow-lg hover:shadow-xl transition-shadow`}>
+    <div className={`rounded-xl overflow-hidden border-2 ${isActive ? 'border-[#7c9142] ring-2 ring-[#7c9142]/30' : 'border-[#1a1b18]'} bg-[#fbfbf9] shadow-md hover:shadow-lg transition-shadow`}>
       {/* banner */}
       <div className="relative h-28 w-full" style={{ background: bg }}>
         <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(120%_120%_at_50%_-10%,white,transparent_60%)]" />
@@ -167,7 +167,7 @@ function DeckCard({
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="px-2 py-1 text-sm bg-transparent border border-white/15 rounded text-slate-200 flex-1"
+                className="px-2 py-1 text-sm rounded flex-1"
                 placeholder="New name"
               />
               <button className="text-xs px-2 py-1 db-pill" onClick={() => { const n = (newName || '').trim(); if (n) onRename(preset.name, n); setRenaming(false); }}>Save</button>
@@ -176,11 +176,11 @@ function DeckCard({
           ) : (
             <>
               <div className="font-semibold truncate" title={preset.name}>{preset.name}</div>
-              <div className="text-xs text-slate-400 truncate" title={preset.seed}>{preset.seed}</div>
+              <div className="text-xs text-[#6b6f64] truncate" title={preset.seed}>{preset.seed}</div>
             </>
           )}
           {isActive && !renaming ? (
-            <span className="ml-auto shrink-0 text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/30 text-emerald-200" title="Active deck">
+            <span className="ml-auto shrink-0 text-[11px] px-2 py-0.5 rounded border border-[#7c9142]/50 bg-[#e6ecd6] text-[#5c6e2f] font-semibold" title="Active deck">
               Selected
             </span>
           ) : null}
@@ -188,23 +188,23 @@ function DeckCard({
 
         {/* chips */}
         <div className="mt-2 flex items-center gap-2 text-[11px]">
-          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">Seed v1</span>
-          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">21 cartas</span>
+          <span className="px-2 py-0.5 rounded bg-black/5 border border-black/10 text-[#6b6f64]">Seed v1</span>
+          <span className="px-2 py-0.5 rounded bg-black/5 border border-black/10 text-[#6b6f64]">21 cartas</span>
         </div>
 
         {/* contadores + barra competitiva */}
         <div className="mt-2 flex items-center gap-2 text-[11px]">
-          <span className="px-1.5 py-0.5 rounded bg-[#ff7f50]/15 border border-[#ff7f50]/30 text-[#ffb39a]">Atk {stats.atk}</span>
-          <span className="px-1.5 py-0.5 rounded bg-[#72d5ff]/15 border border-[#72d5ff]/30 text-[#c6eaff]">Def {stats.def}</span>
-          <span className="px-1.5 py-0.5 rounded bg-[#6ee7a1]/15 border border-[#6ee7a1]/30 text-[#c8ffd7]">Dodge {stats.dodge}</span>
+          <span className="px-1.5 py-0.5 rounded bg-[#ff7f50]/15 border border-[#ff7f50]/40 text-[#c2410c] font-semibold">Atk {stats.atk}</span>
+          <span className="px-1.5 py-0.5 rounded bg-[#72d5ff]/15 border border-[#72d5ff]/40 text-[#0369a1] font-semibold">Def {stats.def}</span>
+          <span className="px-1.5 py-0.5 rounded bg-[#6ee7a1]/20 border border-[#6ee7a1]/50 text-[#15803d] font-semibold">Dodge {stats.dodge}</span>
         </div>
         <StatBarCompetitive stats={stats} />
 
         {confirmDel && (
-          <div className="mt-2 text-xs flex items-center justify-between gap-2 p-2 rounded border border-red-400/30 bg-red-900/10 text-red-200">
-            <span>Delete “{preset.name}”?</span>
+          <div className="mt-2 text-xs flex items-center justify-between gap-2 p-2 rounded border border-red-500/30 bg-red-500/10 text-red-700">
+            <span>Delete "{preset.name}"?</span>
             <div className="flex gap-2">
-              <button className="px-2 py-0.5 rounded bg-red-500/20 border border-red-400/40" onClick={() => { onDelete(preset.name); setConfirmDel(false); }}>Delete</button>
+              <button className="px-2 py-0.5 rounded bg-red-500/20 border border-red-500/40 font-semibold" onClick={() => { onDelete(preset.name); setConfirmDel(false); }}>Delete</button>
               <button className="px-2 py-0.5 rounded db-pill" onClick={() => setConfirmDel(false)}>Cancel</button>
             </div>
           </div>
@@ -215,7 +215,7 @@ function DeckCard({
         <div className="mt-3 flex items-center justify-end gap-2">
           <div className="relative inline-flex items-center">
             <button
-              className={`text-xs px-3 py-1 rounded border ${isActive ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200' : 'bg-white/10 border-white/15 hover:bg-white/15'}`}
+              className={`text-xs px-3 py-1 rounded border-2 font-semibold ${isActive ? 'bg-[#e6ecd6] border-[#7c9142]/60 text-[#5c6e2f]' : 'bg-black/5 border-black/15 hover:bg-black/10 text-[#1a1b18]'}`}
               onClick={() => (onSelect ? onSelect(preset) : onLoad(preset))}
             >
               {isActive ? 'Selected' : 'Select deck'}
@@ -246,7 +246,7 @@ function DeckCard({
                   }, 160) as unknown as number;
                 }
               }}
-              className="ml-2 -mr-1 w-8 h-8 grid place-items-center rounded-full bg-white/6 text-slate-100 shadow-sm hover:bg-white/12"
+              className="ml-2 -mr-1 w-8 h-8 grid place-items-center rounded-full bg-black/5 border border-black/15 text-[#1a1b18] shadow-sm hover:bg-black/10"
               title="Mais ações"
               aria-label={`Mais ações para ${preset.name}`}
             >
@@ -262,7 +262,7 @@ function DeckCard({
                 ref={menuRef}
                 role="menu"
                 aria-label={`Ações para ${preset.name}`}
-                className={"rounded-md border border-white/10 bg-[#0d1222] shadow-xl text-slate-200 portal-menu " + (menuClosing ? 'exit' : 'enter')}
+                className={"rounded-md border-2 border-[#1a1b18] bg-[#fbfbf9] shadow-xl text-[#1a1b18] portal-menu " + (menuClosing ? 'exit' : 'enter')}
                 style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, width: 176 }}
                 onMouseLeave={() => {
                   // animate out then unmount
@@ -291,11 +291,11 @@ function DeckCard({
                   }
                 }}
               >
-                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-white/5" onClick={() => { onLoad(preset); setMenuOpen(false); }}>Open in Builder</button>
-                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-white/5" onClick={() => { onDuplicate(preset); setMenuOpen(false); }}>Duplicate</button>
-                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-white/5" onClick={() => { onCopy(preset.seed); setMenuOpen(false); }}>Copy seed</button>
-                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-white/5" onClick={() => { setRenaming(true); setMenuOpen(false); setNewName(preset.name); }}>Renomear</button>
-                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10" onClick={() => { setConfirmDel(true); setMenuOpen(false); }}>Delete</button>
+                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-[#1a1b18] hover:bg-black/5" onClick={() => { onLoad(preset); setMenuOpen(false); }}>Open in Builder</button>
+                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-[#1a1b18] hover:bg-black/5" onClick={() => { onDuplicate(preset); setMenuOpen(false); }}>Duplicate</button>
+                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-[#1a1b18] hover:bg-black/5" onClick={() => { onCopy(preset.seed); setMenuOpen(false); }}>Copy seed</button>
+                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-[#1a1b18] hover:bg-black/5" onClick={() => { setRenaming(true); setMenuOpen(false); setNewName(preset.name); }}>Renomear</button>
+                <button role="menuitem" tabIndex={-1} className="w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-500/10" onClick={() => { setConfirmDel(true); setMenuOpen(false); }}>Delete</button>
               </div>,
               document.body
             )
@@ -336,8 +336,8 @@ export default function CollectionView({
     <div className="db-card db-content">
       <div className="flex items-center justify-between mb-4 gap-4">
         <div className="flex items-center gap-4">
-          <h3 className="font-semibold text-lg">My Decks</h3>
-          <div className="text-sm text-slate-400">{presets.length} total</div>
+          <h3 className="db-display text-lg">My Decks</h3>
+          <div className="text-sm text-[#6b6f64]">{presets.length} total</div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -345,9 +345,9 @@ export default function CollectionView({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search decks by name or seed…"
-            className="px-3 py-1.5 border border-white/10 rounded bg-transparent text-sm text-slate-200 w-64"
+            className="px-3 py-1.5 rounded text-sm w-64"
           />
-          <button className="px-3 py-1.5 rounded bg-white/6 border border-white/10 text-sm text-slate-100 hover:bg-white/10">Create deck</button>
+          <button className="px-3 py-1.5 rounded bg-black/5 border-2 border-black/15 text-sm text-[#1a1b18] hover:bg-black/10 font-semibold">Create deck</button>
         </div>
       </div>
 
@@ -368,10 +368,10 @@ export default function CollectionView({
       </div>
 
       {filtered.length === 0 && (
-        <div className="mt-6 p-6 text-sm text-slate-400 border border-dashed border-white/10 rounded text-center db-empty-cta">
+        <div className="mt-6 p-6 text-sm text-[#6b6f64] border-2 border-dashed rounded text-center db-empty-cta">
           <div className="mb-2">Nenhum deck encontrado.</div>
           <div className="flex items-center justify-center gap-2">
-            <button className="px-3 py-1.5 rounded bg-white/6 border border-white/10 text-sm text-slate-100 hover:bg-white/10">Create your first deck</button>
+            <button className="px-3 py-1.5 rounded bg-black/5 border-2 border-black/15 text-sm text-[#1a1b18] hover:bg-black/10 font-semibold">Create your first deck</button>
           </div>
         </div>
       )}

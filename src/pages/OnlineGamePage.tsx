@@ -5,6 +5,8 @@ import { useMatchConnection } from '@/hooks/useMatchConnection';
 import { Button } from '@/components/ui/button';
 import Game from '@/features/game/Game';
 
+const CopyIcon = new URL('../Assets/icons/copy.svg', import.meta.url).href;
+
 export default function OnlineGamePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -41,9 +43,9 @@ export default function OnlineGamePage() {
               navigator.clipboard.writeText(matchId);
               alert('Código copiado!');
             }}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 mb-3"
+            className="w-full bg-emerald-600 hover:bg-emerald-500 mb-3 inline-flex items-center justify-center gap-2"
           >
-            📋 Copiar Código
+            <img src={CopyIcon} alt="" className="w-5 h-5" /> Copiar Código
           </Button>
           <p className="text-sm text-slate-400 text-center">
             Aguardando oponente...

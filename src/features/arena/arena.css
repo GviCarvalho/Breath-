@@ -1,52 +1,61 @@
 :root{
-  /* Cores */
-  --bg-1:#0d0f14;
-  --bg-2:#151a23;
-  --panel:#0f131a;
-  --line:#2b3342;
-  --accent:#70f0ff;
-  
+  /* Dojo palette - same tokens as the Home/dojo-theme, so the arena reads as
+     the same game rather than a different app bolted on. Combat accents
+     (hit/block/dodge/counter) are deeper/more saturated than the old neon
+     set since they now sit on a light tatami floor instead of a dark void. */
+  --dojo-canvas-0:#f4f5f2;
+  --dojo-canvas-1:#e3e5e0;
+  --dojo-ink:#1a1b18;
+  --dojo-muted:#6b6f64;
+  --dojo-panel:#fbfbf9;
+  --dojo-border:#1a1b18;
+  --dojo-border-soft:#c9cbc1;
+  --dojo-accent:#7c9142;
+  --dojo-accent-dark:#5c6e2f;
+  --dojo-accent-pale:#e6ecd6;
+  --dojo-gray-0:#e9ebe3;
+  --dojo-gray-1:#c3c6b9;
+  --dojo-gray-2:#8b8f80;
+
   /* Tamanhos responsivos (valores padrão, serão atualizados via JS) */
   --card-width: 120px;
   --card-height: 174px;
   --card-gap: 12px;
   --lane-gap: 60px;
   --card-raise: 24px;
-  /* horizontal offset used to mirror deck positions (positive shifts top to right, bottom to left) */
   --deck-h-offset: 60px;
-  /* EDIT HERE to move both decks at once (change these two values):
-    --deck-offset-x moves horizontally (positive = top->right, bottom->left)
-    --deck-offset-y moves vertically (positive = top->down, bottom->up) */
   --deck-offset-x: 0px;
   --deck-offset-y: 0px;
-  --accent2:#ffd36e;
-  --hit:#ff5b6e;
-  --dodge:#7cf59b;
-  --def:#7eb6ff;
-  --text:#dde6ff;
-  --muted:#9fb0d0;
-  --card:#1b2230;
-  --card-ink:#e9f2ff;
-  --glow:0 0 0 2px rgba(112,240,255,.25), 0 0 24px rgba(112,240,255,.18);
+
+  --accent2:#c9861f;
+  --hit:#c23b4f;
+  --dodge:#2f8f6e;
+  --def:#3b6fa8;
+  --text:var(--dojo-ink);
+  --muted:var(--dojo-muted);
+  --card:#ffffff;
+  --card-ink:var(--dojo-ink);
+  --glow:0 0 0 2px rgba(124,145,66,.25), 0 0 20px rgba(124,145,66,.14);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 .breath-root{
   margin:0;
   background:
-    radial-gradient(1200px 600px at 50% 110%, #1c2433 0%, #10141c 55%, #0a0d13 100%),
-    linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    radial-gradient(1100px 600px at 50% -10%, #ffffff 0%, var(--dojo-canvas-0) 55%, var(--dojo-canvas-1) 100%);
   color:var(--text);
   font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji';
   overflow:hidden;
+}
+.dojo-display{
+  font-family:'KanedaGothicBold', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial;
+  text-transform:uppercase; letter-spacing:.03em; font-weight:700;
 }
 
 /* LAYOUT GERAL */
 .hud{
   position:fixed;
   top:2vh;
-  /* Align the HUD so its left edge sits at: sidebar left offset (1.75rem) + collapsed sidebar width (56px) + the standard gap (min(12px, 1vh)).
-     This keeps the horizontal spacing between the sidebar and the HUD consistent with the log panel spacing. */
   left: calc(1.75rem + 56px + min(12px, 1vh));
   right: 2vh;
   bottom: 2vh;
@@ -55,7 +64,12 @@ html,body{height:100%}
   grid-template-rows: min(100px, 10vh) 1fr min(160px, 15vh);
   gap: min(12px, 1vh);
 }
-.panel{background:linear-gradient(180deg, #121825, #0d121d); border:1px solid var(--line); border-radius:14px}
+.panel{
+  background: var(--dojo-panel);
+  border: 2px solid var(--dojo-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(20,22,16,.08);
+}
 
 /* TOPO / BASE – BARRAS DO JOGADOR */
 .playerbar{
@@ -63,65 +77,70 @@ html,body{height:100%}
 }
 .playerbar{ position: relative; z-index: 2; }
 .playerbar .avatar{
-  width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#263349,#1a2233);
-  display:grid; place-items:center; border:1px solid var(--line);
-  box-shadow:inset 0 0 24px rgba(255,255,255,.04);
-  font-weight:700; color:#9ec7ff;
+  width:56px; height:56px; border-radius:12px; background:var(--dojo-panel);
+  display:grid; place-items:center; border:2px solid var(--dojo-border);
+  font-weight:800; color:var(--dojo-ink); font-family:'KanedaGothicBold',system-ui,sans-serif;
+  letter-spacing:.04em; font-size:12px;
 }
-.playerbar .name{font-weight:700; letter-spacing:.2px}
-.playerbar .meta{color:var(--muted); font-size:13px}
+.playerbar .name{font-weight:800; letter-spacing:.02em; text-transform:uppercase; font-family:'KanedaGothicBold',system-ui,sans-serif; color:var(--dojo-ink)}
+.playerbar .meta{color:var(--muted); font-size:12px}
 .spacer{flex:1}
 
 /* CRISTAIS DE FÔLEGO */
-.crystals{display:flex; gap:8px}
+.crystals{display:flex; gap:7px}
 .crystal{
   position:relative;
-  width:22px; height:22px; border-radius:6px; border:1px solid #1d2736;
-  background: url("../../Assets/art/tokens/Carved Green Yin-Yang Token.png") center/contain no-repeat;
-  background-color:#0f1623;
-  box-shadow:inset 0 0 8px rgba(112,240,255,.15);
-  opacity:.45; transform:translateZ(0);
+  width:22px; height:22px; border-radius:6px; border:2px solid var(--dojo-border);
+  background: url("../../Assets/art/tokens/Carved Green Yin-Yang Token.png") center/70% no-repeat;
+  background-color: var(--dojo-gray-0);
+  opacity:.4; transform:translateZ(0);
+  transition: opacity .2s ease, transform .2s ease, background-color .2s ease;
 }
-.crystal.on{opacity:1}
+.crystal.on{opacity:1; background-color:var(--dojo-accent-pale); box-shadow: 0 0 0 1px var(--dojo-accent) inset;}
 
 /* POSTURAS */
-.postures{display:flex; gap:8px}
+.postures{display:flex; gap:7px}
 .posture{
-  width:28px;height:28px;border-radius:999px;border:1px solid var(--line);
-  display:grid;place-items:center;font-weight:700;color:#cde2ff;background:#121a27
+  width:28px;height:28px;border-radius:999px;border:2px solid var(--dojo-border);
+  display:grid;place-items:center;font-weight:800;color:var(--dojo-muted);background:var(--dojo-panel);
+  font-family:'KanedaGothicBold',system-ui,sans-serif; font-size:13px;
 }
-.posture.active{outline:2px solid rgba(255,211,110,.45); color:#ffe3a3; background:linear-gradient(180deg,#1e2737,#18202e)}
+.posture.active{ color:#fff; background:var(--dojo-accent); border-color:var(--dojo-accent-dark); }
 
 /* RECURSOS LATERAIS */
 .sidebar{ display:none; }
 .resource{
-  width:56px; background:linear-gradient(180deg,#101826,#0b111b); border:1px solid var(--line); border-radius:12px; padding:10px 8px;
+  width:56px; background:var(--dojo-panel); border:2px solid var(--dojo-border); border-radius:12px; padding:10px 8px;
   display:flex; flex-direction:column; align-items:center; gap:8px;
 }
-.pip{width:24px; height:24px; border-radius:8px; border:1px solid #253247; background:#0f1623}
-.pip.on.attack{background:linear-gradient(180deg,#3c1a23,#2a0e14); box-shadow:0 0 10px rgba(255,91,110,.35)}
-.pip.on.defense{background:linear-gradient(180deg,#16253e,#0e1a2e); box-shadow:0 0 10px rgba(126,182,255,.35)}
-.pip.on.dodge{background:linear-gradient(180deg,#10311f,#0b2316); box-shadow:0 0 10px rgba(124,245,155,.35)}
+.pip{width:24px; height:24px; border-radius:8px; border:2px solid var(--dojo-border-soft); background:var(--dojo-gray-0)}
+.pip.on.attack{background:var(--hit); border-color:var(--hit)}
+.pip.on.defense{background:var(--def); border-color:var(--def)}
+.pip.on.dodge{background:var(--dodge); border-color:var(--dodge)}
 
 /* LOG */
 .log{padding:10px 14px; grid-row:1 / span 3; grid-column:2; overflow:auto}
-.log h3{margin:6px 0 8px; font-size:14px; letter-spacing:.6px; color:#9ec7ff; text-transform:uppercase}
-.log .entry{font-size:14px; color:#bfd1f5; padding:8px 10px; border-left:2px solid #2e3a52; margin:6px 0; background:#0f1521; border-radius:8px}
+.log h3{margin:6px 0 10px; font-size:13px; letter-spacing:.08em; color:var(--dojo-ink); text-transform:uppercase; font-family:'KanedaGothicBold',system-ui,sans-serif;}
+.log .entry{font-size:13px; color:var(--dojo-ink); padding:8px 10px; border-left:3px solid var(--dojo-border-soft); margin:6px 0; background:var(--dojo-gray-0); border-radius:6px}
 .log .entry.hit{border-left-color:var(--hit)}
 .log .entry.block{border-left-color:var(--def)}
 .log .entry.dodge{border-left-color:var(--dodge)}
 
-/* ARENA CENTRAL */
+/* ARENA CENTRAL - tatami floor, matching the Dojo panel on the Home screen */
 .board{
   grid-column:1; grid-row:2; position:relative;
   background:
-    radial-gradient(900px 280px at 50% 20%, rgba(112,240,255,.05) 0, transparent 60%),
-    radial-gradient(900px 280px at 50% 80%, rgba(255,211,110,.05) 0, transparent 60%),
-    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 20 20"><path d="M0 10H20M10 0V20" stroke="%232a3244" stroke-width="0.4" opacity="0.45"/></svg>') center/160px 160px repeat,
-    linear-gradient(180deg, #0e141f, #0b1018);
-  border-radius:16px; border:1px solid var(--line);
-  box-shadow:inset 0 40px 120px rgba(112,240,255,.05), inset 0 -40px 120px rgba(255,211,110,.06);
+    repeating-linear-gradient(90deg, rgba(26,27,24,.05) 0 2px, transparent 2px 26px),
+    repeating-linear-gradient(0deg, rgba(26,27,24,.035) 0 2px, transparent 2px 26px),
+    linear-gradient(165deg, #ece3c6, #d9cd9e);
+  border-radius:16px; border:2px solid var(--dojo-border);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
   overflow:hidden;
+}
+/* Center seam, like two tatami mats meeting at the middle of the floor */
+.board::before{
+  content:''; position:absolute; left:6%; right:6%; top:50%; height:2px; transform:translateY(-50%);
+  background: rgba(26,27,24,.18);
 }
 .lane{
   position:absolute; left:0; right:0; height:46%;
@@ -130,12 +149,11 @@ html,body{height:100%}
 .lane.top{top:2%}
 .lane.bot{bottom:2%}
 .slot{
-  width: var(--card-width); height: var(--card-height); border-radius:10px; border:1px dashed #3a465d55;
+  width: var(--card-width); height: var(--card-height); border-radius:10px; border:2px dashed rgba(26,27,24,.32);
   display:grid; place-items:center; position:relative;
-  background:rgba(16,22,33,.35);
-  backdrop-filter: blur(4px) saturate(1.1);
+  background: rgba(251,251,249,.4);
 }
-.slot.active{border:1px solid #6d7da055; outline:2px dashed rgba(158,199,255,.25)}
+.slot.active{border:2px dashed var(--dojo-accent-dark); background: rgba(251,251,249,.6);}
 .slot .fx{
   pointer-events:none; position:absolute; inset:0; border-radius:14px; opacity:0;
 }
@@ -143,14 +161,8 @@ html,body{height:100%}
 /* Board corner deck slots (inside central board) */
 .board-deck{ position:absolute; pointer-events:none; z-index:50 }
 .board-deck > div{ pointer-events:auto }
-
-/* top-right (opponent) */
 .deck-topright{ top:6%; right:6%; transform: translate(0, 0) rotate(-18deg); }
-
-/* bottom-left (player) */
 .deck-bottomleft{ bottom:6%; left:6%; transform: translate(0, 0) rotate(-18deg); }
-
-/* scale down slightly to visually separate from main hand/deck UI */
 .board-deck .card{ width: calc(var(--card-width) * 0.9); height: calc(var(--card-height) * 0.9); border-radius:8px }
 
 
@@ -158,17 +170,17 @@ html,body{height:100%}
 .card{
   --raise:0px;
   --scale:1;
-  width: var(--card-width); height: var(--card-height); border-radius:10px; border:1px solid #263149;
-  background:linear-gradient(180deg, #1a2233, #121a27);
+  width: var(--card-width); height: var(--card-height); border-radius:10px; border:2px solid var(--dojo-border);
+  background: var(--dojo-panel);
   color:var(--card-ink);
-  box-shadow: 0 16px 40px rgba(0,0,0,.35);
+  box-shadow: 0 14px 32px rgba(20,22,16,.28);
   transform: translateY(var(--raise)) rotate(var(--tilt, 0deg)) scale(var(--scale));
   transform-origin: 50% 50%;
   transition: transform .24s cubic-bezier(.34,1.56,.64,1), box-shadow .24s ease, filter .24s ease;
   cursor:pointer; position:relative; overflow:hidden;
 }
-.card:hover{--raise:calc(var(--card-raise) * -1); --scale:1.045; box-shadow: 0 22px 44px rgba(0,0,0,.5)}
-.card.selected{--raise:calc(var(--card-raise) * -4); --scale:1.06; filter: drop-shadow(0 0 14px rgba(112,240,255,.4))}
+.card:hover{--raise:calc(var(--card-raise) * -1); --scale:1.045; box-shadow: 0 20px 40px rgba(20,22,16,.34)}
+.card.selected{--raise:calc(var(--card-raise) * -4); --scale:1.06; filter: drop-shadow(0 0 12px rgba(124,145,66,.55))}
 .card:active{--scale:0.96; transition-duration: .08s;}
 
 /* 3D card: mouse-follow tilt + moving specular shine, applied to the inner
@@ -182,10 +194,10 @@ html,body{height:100%}
   transform-style: preserve-3d;
   transition: transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .2s ease;
 }
-.tcg-card:hover{ box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+.tcg-card:hover{ box-shadow: 0 4px 18px rgba(20,22,16,.3); }
 .card-shine{
   position:absolute; inset:0; z-index:25; pointer-events:none; border-radius:inherit;
-  background: radial-gradient(circle at var(--shineX,50%) var(--shineY,50%), rgba(255,255,255,.5), rgba(255,255,255,0) 45%);
+  background: radial-gradient(circle at var(--shineX,50%) var(--shineY,50%), rgba(255,255,255,.65), rgba(255,255,255,0) 45%);
   opacity:0; transition: opacity .25s ease; mix-blend-mode: overlay;
 }
 .tcg-card:hover .card-shine{ opacity:1; }
@@ -209,16 +221,14 @@ html,body{height:100%}
 .op-hand{
   grid-column:1; grid-row:1;
   display:flex; align-items:flex-end; justify-content:center; gap:1px; padding: calc(var(--card-height) * 0.9) 0 4px;
-  filter:saturate(.9) opacity(.9);
+  filter:saturate(.92) opacity(.92);
   position:relative; z-index:10;
 }
 .back{
-  width: var(--card-width); height: var(--card-height); border-radius:10px; border:1px solid #2b3342;
+  width: var(--card-width); height: var(--card-height); border-radius:10px; border:2px solid var(--dojo-border);
   background:
-    url("../../Assets/art/cards/CardBack.png") center/cover no-repeat,
-    radial-gradient(50% 80% at 50% 30%, rgba(112,240,255,.12) 0, transparent 70%),
-    linear-gradient(135deg, #1b2332, #131a26);
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    url("../../Assets/art/cards/CardBack.png") center/cover no-repeat;
+  box-shadow: 0 10px 26px rgba(20,22,16,.24);
   transform: rotate(180deg);
 }
 
@@ -232,35 +242,36 @@ html,body{height:100%}
   display:flex; gap:10px;
 }
 .btn{
-  background:linear-gradient(180deg,#1a2332,#131a24); border:1px solid #2a3548; color:#cfe0ff;
-  border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; letter-spacing:.3px;
+  background: var(--dojo-panel); border:2px solid var(--dojo-border); color:var(--dojo-ink);
+  border-radius:8px; padding:10px 14px; cursor:pointer; font-weight:800; letter-spacing:.03em;
+  text-transform:uppercase; font-family:'KanedaGothicBold',system-ui,sans-serif; font-size:12px;
+  transition: background .15s ease, color .15s ease;
 }
-.btn.primary{border-color:#2b9fb3; box-shadow:var(--glow)}
-.btn:disabled{opacity:.5; cursor:not-allowed}
+.btn:hover:not(:disabled){ background:var(--dojo-ink); color:#fff; }
+.btn.primary{background:var(--dojo-accent); border-color:var(--dojo-accent-dark); color:#fff;}
+.btn.primary:hover:not(:disabled){background:var(--dojo-accent-dark);}
+.btn:disabled{background:var(--dojo-gray-0); color:var(--dojo-gray-2); border-color:var(--dojo-gray-1); cursor:not-allowed}
 
 /* Deck wrapper to ensure full clickable area above overlapping elements */
 .deck-wrap { position: relative; z-index: 100; }
 .deck-wrap .card { pointer-events: auto; }
 
-/* Nudge the opponent deck up to the top margin (now responsive) */
 .deck-wrap.deck-top {
   align-self: flex-start;
-  margin-right: 0; /* horizontal handled by transform for mirroring */
+  margin-right: 0;
   margin-top: clamp(8px, calc(var(--card-height) * 0.55), 64px);
-  /* TOP is positioned using the computed top translations (0px = center of board) */
   transform: translateX(var(--deck-top-translate-x)) translateY(var(--deck-top-translate-y)) rotate(30deg) translateZ(0);
 }
 .deck-wrap.deck-bottom {
-  margin-left: 0; /* horizontal handled by transform for mirroring */
+  margin-left: 0;
   margin-top: clamp(calc(var(--card-height) * -1.8), calc(var(--card-height) * -0.7), -40px);
-  /* BOTTOM uses the computed bottom translations (0px = center of board) */
   transform: translateX(var(--deck-bottom-translate-x)) translateY(var(--deck-bottom-translate-y)) rotate(-30deg) translateZ(0);
 }
 
-/* FX e animações (iguais ao protótipo) */
-.fx.hit{background:radial-gradient(220px 220px at 50% 50%, rgba(255,91,110,.6), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
-.fx.block{background:radial-gradient(220px 220px at 50% 50%, rgba(126,182,255,.55), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
-.fx.dodge{background:radial-gradient(220px 220px at 50% 50%, rgba(124,245,155,.55), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+/* FX e animações */
+.fx.hit{background:radial-gradient(220px 220px at 50% 50%, rgba(194,59,79,.55), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+.fx.block{background:radial-gradient(220px 220px at 50% 50%, rgba(59,111,168,.5), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+.fx.dodge{background:radial-gradient(220px 220px at 50% 50%, rgba(47,143,110,.5), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
 @keyframes fxBurst{
   0%{ opacity:0; transform:scale(.5); }
   28%{ opacity:1; transform:scale(1.12); }
@@ -272,9 +283,9 @@ html,body{height:100%}
   transform:translate(-50%,-50%) scale(.3); border-radius:50%; border:3px solid; opacity:0;
   animation: shockRing .5s cubic-bezier(.15,.8,.3,1) both;
 }
-.fx.hit::after{ border-color:#ff5b6e; box-shadow:0 0 18px rgba(255,91,110,.5); }
-.fx.block::after{ border-color:#7eb6ff; box-shadow:0 0 18px rgba(126,182,255,.5); }
-.fx.dodge::after{ border-color:#7cf59b; box-shadow:0 0 18px rgba(124,245,155,.5); }
+.fx.hit::after{ border-color:var(--hit); box-shadow:0 0 16px rgba(194,59,79,.4); }
+.fx.block::after{ border-color:var(--def); box-shadow:0 0 16px rgba(59,111,168,.4); }
+.fx.dodge::after{ border-color:var(--dodge); box-shadow:0 0 16px rgba(47,143,110,.4); }
 @keyframes shockRing{
   0%{ opacity:.95; transform:translate(-50%,-50%) scale(.25); }
   100%{ opacity:0; transform:translate(-50%,-50%) scale(2.4); }
@@ -290,7 +301,7 @@ html,body{height:100%}
 }
 .board.hit-shake::before{
   content:''; position:absolute; inset:0; z-index:250; pointer-events:none; border-radius:16px;
-  background: rgba(255,91,110,.16);
+  background: rgba(194,59,79,.14);
   animation: hitFlash .32s ease-out both;
 }
 @keyframes hitFlash{ 0%{ opacity:1; } 100%{ opacity:0; } }
@@ -302,17 +313,17 @@ html,body{height:100%}
 }
 .impact-banner{
   display:inline-block; padding:10px 26px; border-radius:999px;
-  font-weight:800; font-size:clamp(15px, 1.7vw, 22px); letter-spacing:.3px; white-space:nowrap;
-  color:#eaf6ff; background:linear-gradient(180deg, rgba(22,28,40,.94), rgba(10,14,22,.94));
-  border:1px solid rgba(255,255,255,.14);
-  box-shadow: 0 14px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03);
-  text-shadow: 0 2px 8px rgba(0,0,0,.5);
+  font-weight:800; font-size:clamp(15px, 1.7vw, 22px); letter-spacing:.04em; white-space:nowrap;
+  text-transform:uppercase; font-family:'KanedaGothicBold',system-ui,sans-serif;
+  color:var(--dojo-ink); background: var(--dojo-panel);
+  border:2px solid var(--dojo-border);
+  box-shadow: 0 14px 34px rgba(20,22,16,.24);
   animation: bannerPop .68s cubic-bezier(.2,.9,.25,1.4) both;
 }
-.impact-banner.tone-good{ color:#c4f7d0; border-color:rgba(124,245,155,.55); box-shadow:0 14px 40px rgba(0,0,0,.5), 0 0 34px rgba(124,245,155,.28); }
-.impact-banner.tone-bad{ color:#ffc7cd; border-color:rgba(255,91,110,.55); box-shadow:0 14px 40px rgba(0,0,0,.5), 0 0 34px rgba(255,91,110,.28); }
-.impact-banner.tone-info{ color:#ffe3a3; border-color:rgba(255,211,110,.5); box-shadow:0 14px 40px rgba(0,0,0,.5), 0 0 30px rgba(255,211,110,.22); }
-.impact-banner.tone-ko{ color:#fff; border-color:rgba(255,91,110,.75); font-size:clamp(20px,2.6vw,32px); box-shadow:0 16px 54px rgba(0,0,0,.6), 0 0 48px rgba(255,91,110,.45); }
+.impact-banner.tone-good{ color:#245a3f; border-color:var(--dodge); background:#eaf5ef; }
+.impact-banner.tone-bad{ color:#7a2233; border-color:var(--hit); background:#fbebee; }
+.impact-banner.tone-info{ color:#7a5713; border-color:var(--accent2); background:#faf1de; }
+.impact-banner.tone-ko{ color:#fff; border-color:var(--hit); background:var(--hit); font-size:clamp(20px,2.6vw,32px); box-shadow:0 16px 48px rgba(194,59,79,.4); }
 @keyframes bannerPop{
   0%{ opacity:0; transform: translateY(8px) scale(.82); }
   16%{ opacity:1; transform: translateY(0) scale(1.07); }
@@ -325,15 +336,16 @@ html,body{height:100%}
 .floaters{ position:absolute; inset:0; pointer-events:none; z-index:60; overflow:visible; }
 .floater{
   position:absolute; left:50%; top:20%; transform:translate(-50%,-50%);
-  font-weight:800; font-size:20px; letter-spacing:.4px; white-space:nowrap;
-  text-shadow: 0 2px 10px rgba(0,0,0,.65);
+  font-weight:800; font-size:20px; letter-spacing:.02em; white-space:nowrap;
+  font-family:'KanedaGothicBold',system-ui,sans-serif;
+  text-shadow: 0 1px 0 #fff, 0 2px 0 #fff, 0 3px 8px rgba(20,22,16,.35);
   animation: floatUp 1s cubic-bezier(.15,.7,.3,1) forwards;
 }
-.floater.dmg{ color:#ff8a97; font-size:24px; }
-.floater.block{ color:#8fc6ff; }
-.floater.dodge{ color:#8bf3a7; }
-.floater.counter{ color:#ffd36e; }
-.floater.ko{ color:#ff5b6e; font-size:28px; }
+.floater.dmg{ color:var(--hit); font-size:24px; }
+.floater.block{ color:var(--def); }
+.floater.dodge{ color:var(--dodge); }
+.floater.counter{ color:var(--accent2); }
+.floater.ko{ color:var(--hit); font-size:28px; }
 @keyframes floatUp{
   0%{ opacity:0; transform: translate(-50%,-40%) scale(.7); }
   18%{ opacity:1; transform: translate(-50%, -70%) scale(1.15); }
@@ -348,7 +360,7 @@ html,body{height:100%}
    for the opponent's card, the in-flight face-down -> face-up flip rig. */
 .card-flight{
   z-index: 500; pointer-events: none; will-change: transform;
-  filter: drop-shadow(0 14px 26px rgba(0,0,0,.5));
+  filter: drop-shadow(0 14px 24px rgba(20,22,16,.35));
 }
 .card-flight-perspective{ width:100%; height:100%; perspective: 1000px; }
 .card-flight-flip{
@@ -362,9 +374,9 @@ html,body{height:100%}
    uniform contact glow under it instead of stretching the card itself. */
 .table-card{ animation: tableLand .32s ease-out both; }
 @keyframes tableLand{
-  0%{ box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 16px 40px rgba(0,0,0,.35); }
-  30%{ box-shadow: 0 0 34px 6px rgba(255,255,255,.16), 0 16px 40px rgba(0,0,0,.35); }
-  100%{ box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 16px 40px rgba(0,0,0,.35); }
+  0%{ box-shadow: 0 0 0 0 rgba(124,145,66,0), 0 14px 32px rgba(20,22,16,.28); }
+  30%{ box-shadow: 0 0 30px 6px rgba(124,145,66,.35), 0 14px 32px rgba(20,22,16,.28); }
+  100%{ box-shadow: 0 0 0 0 rgba(124,145,66,0), 0 14px 32px rgba(20,22,16,.28); }
 }
 
 /* Breath crystals: only the one token that actually changed animates, not
@@ -374,13 +386,13 @@ html,body{height:100%}
 .crystal.breaking{ animation: crystalBreak .48s cubic-bezier(.25,.7,.35,1) both; }
 @keyframes crystalBreak{
   0%{ opacity:1; transform:scale(1) rotate(0deg); filter:brightness(1); }
-  22%{ opacity:1; transform:scale(1.35) rotate(0deg); filter:brightness(2.4) saturate(1.6); }
-  55%{ opacity:.7; transform:scale(.65) rotate(-12deg); filter:brightness(1.2); }
-  100%{ opacity:.45; transform:scale(1) rotate(0deg); filter:brightness(1); }
+  22%{ opacity:1; transform:scale(1.35) rotate(0deg); filter:brightness(1.5) saturate(1.4); }
+  55%{ opacity:.7; transform:scale(.65) rotate(-12deg); filter:brightness(1.1); }
+  100%{ opacity:.4; transform:scale(1) rotate(0deg); filter:brightness(1); }
 }
 .crystal.breaking::before, .crystal.breaking::after{
   content:''; position:absolute; top:50%; left:50%; width:4px; height:4px;
-  background:#bfeeff; border-radius:1px; box-shadow:0 0 6px rgba(112,240,255,.9);
+  background:var(--dojo-accent-dark); border-radius:1px; box-shadow:0 0 5px rgba(92,110,47,.7);
   opacity:0; pointer-events:none;
 }
 .crystal.breaking::before{ animation: crystalShardA .48s ease-out both; }
@@ -395,51 +407,37 @@ html,body{height:100%}
 }
 .crystal.gaining{ animation: crystalGain .42s cubic-bezier(.25,.8,.3,1) both; }
 @keyframes crystalGain{
-  0%{ opacity:.45; transform:scale(.6); filter:brightness(.6); }
-  50%{ opacity:1; transform:scale(1.3); filter:brightness(2.2) saturate(1.5); }
+  0%{ opacity:.4; transform:scale(.6); filter:brightness(.9); }
+  50%{ opacity:1; transform:scale(1.3); filter:brightness(1.4) saturate(1.4); }
   100%{ opacity:1; transform:scale(1); filter:brightness(1); }
 }
 
 /* Posture ring pulse when a player switches stance */
 .postures.pulse .posture.active{ animation: posturePulse .5s ease; }
 @keyframes posturePulse{
-  0%{ box-shadow: 0 0 0 0 rgba(255,211,110,.55); }
-  60%{ box-shadow: 0 0 0 8px rgba(255,211,110,0); }
-  100%{ box-shadow: 0 0 0 0 rgba(255,211,110,0); }
+  0%{ box-shadow: 0 0 0 0 rgba(124,145,66,.55); }
+  60%{ box-shadow: 0 0 0 8px rgba(124,145,66,0); }
+  100%{ box-shadow: 0 0 0 0 rgba(124,145,66,0); }
 }
 /* Counter window visuals */
-.counter-glow{ box-shadow: 0 0 24px rgba(255,211,110,.2), inset 0 0 16px rgba(255,211,110,.12); border-color: #ffd36e55 !important; }
-.slot.counter-open{ box-shadow: 0 0 0 2px rgba(255,211,110,.45), 0 0 24px rgba(255,211,110,.25); animation: counterPulse 1.2s ease-in-out infinite; }
-@keyframes counterPulse{ 0%{ box-shadow: 0 0 0 0 rgba(255,211,110,.45), 0 0 16px rgba(255,211,110,.12) } 50%{ box-shadow: 0 0 0 4px rgba(255,211,110,.25), 0 0 28px rgba(255,211,110,.22) } 100%{ box-shadow: 0 0 0 0 rgba(255,211,110,.45), 0 0 16px rgba(255,211,110,.12) } }
-.counter-badge{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; padding:6px 8px; border-radius:10px; border:1px solid #3b2d0e; background:linear-gradient(180deg,#1b1a12,#151310); color:#ffd36e; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
-.counter-badge span{ text-shadow: 0 0 12px rgba(255,211,110,.35); }
-.counter-bar{ width:120px; height:6px; border-radius:999px; background:#2b2a22; overflow:hidden; border:1px solid #3b2d0e }
-.counter-bar .fill{ height:100%; background:linear-gradient(90deg,#ffd36e,#ffecb0); box-shadow:0 0 8px rgba(255,211,110,.45) inset; transition: width .1s linear }
+.counter-glow{ box-shadow: 0 0 0 2px rgba(201,134,31,.35), inset 0 0 14px rgba(201,134,31,.1); border-color: var(--accent2) !important; }
+.slot.counter-open{ box-shadow: 0 0 0 2px rgba(201,134,31,.4); animation: counterPulse 1.2s ease-in-out infinite; }
+@keyframes counterPulse{ 0%{ box-shadow: 0 0 0 0 rgba(201,134,31,.4) } 50%{ box-shadow: 0 0 0 5px rgba(201,134,31,.22) } 100%{ box-shadow: 0 0 0 0 rgba(201,134,31,.4) } }
+.counter-badge{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; padding:6px 8px; border-radius:8px; border:2px solid var(--accent2); background:#faf1de; color:#7a5713; font-weight:800; letter-spacing:.03em; text-transform:uppercase; font-family:'KanedaGothicBold',system-ui,sans-serif; }
+.counter-badge span{ font-size:12px; }
+.counter-bar{ width:120px; height:6px; border-radius:999px; background:#e9dcbc; overflow:hidden; border:1px solid var(--accent2) }
+.counter-bar .fill{ height:100%; background:var(--accent2); transition: width .1s linear }
 .shake{animation: shake .3s}
 @keyframes shake{25%{transform: translateX(-6px)}50%{transform: translateX(6px)}75%{transform: translateX(-3px)}100%{transform: translateX(0)}}
-/* ===== HOTFIX: ocupar a viewport e tirar o fundo branco ===== */
-
-/* pinta o fundo global para não aparecer branco atrás */
-html, body, #root {
-  height: 100%;
-  background:
-    radial-gradient(1200px 600px at 50% 110%, #1c2433 0%, #10141c 55%, #0a0d13 100%),
-    linear-gradient(180deg, #0d0f14, #151a23) !important;
-}
-
 /* garante que a raiz da arena ocupe a altura toda */
 .breath-root {
   min-height: 100vh;
 }
 
-/* faz a HUD ficar fixa na tela, mas deixando espaço para o header do app.
-   Ajuste o valor do 'top' conforme a altura do seu header (64–88px, por aí). */
-/* override previous positioning for full-viewport layout */
-/* handled above with fixed + sidebar offset */
-
-/* opcional: se aparecer scroll lateral por 1–2px, segura aqui */
-body { overflow: hidden; }
-
-
-
-
+/* NOTE: the arena used to force `overflow: hidden` and a dark background
+   directly onto html/body/#root here. Those rules are global side effects
+   of importing this stylesheet - once any page loaded the arena once, they
+   stuck around for the rest of the session (this CSS file isn't unloaded
+   on unmount), silently breaking scroll on every other route. That's now
+   handled by ArenaPrototype's own mount/unmount effect instead, so it only
+   applies while the arena is actually on screen. */

@@ -148,6 +148,35 @@ export default function ArenaPrototype({
     return () => cleanup();
   }, []);
 
+  // The arena is a full-viewport HUD, so while it's mounted the page itself
+  // shouldn't scroll and shouldn't show a flash of the app's default
+  // background through any gap. This used to be baked into arena.css as a
+  // global `body { overflow: hidden }` + forced html/body/#root background,
+  // which "worked" but never got undone - once any page loaded arena.css
+  // once, every other route was stuck with scrolling disabled for the rest
+  // of the session. Applying and reverting it here ties it to the arena's
+  // actual lifetime instead.
+  useEffect(() => {
+    const root = document.getElementById('root');
+    const prev = {
+      bodyOverflow: document.body.style.overflow,
+      htmlBg: document.documentElement.style.background,
+      bodyBg: document.body.style.background,
+      rootBg: root?.style.background ?? '',
+    };
+    const bg = 'radial-gradient(1100px 600px at 50% -10%, #ffffff 0%, #f4f5f2 55%, #e3e5e0 100%)';
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.background = bg;
+    document.body.style.background = bg;
+    if (root) root.style.background = bg;
+    return () => {
+      document.body.style.overflow = prev.bodyOverflow;
+      document.documentElement.style.background = prev.htmlBg;
+      document.body.style.background = prev.bodyBg;
+      if (root) root.style.background = prev.rootBg;
+    };
+  }, []);
+
   const boardRef = useRef<HTMLElement | null>(null);
   const opHandRef = useRef<HTMLDivElement | null>(null);
   const slotTopRef = useRef<HTMLDivElement | null>(null);
