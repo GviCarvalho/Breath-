@@ -9,14 +9,19 @@ function useDeckPreview(seed?: string | null) {
 }
 
 export default function Home() {
-  const { playerName, setPlayerName, activeDeck, setSeed, setMode, setArenaMode } = useAppState();
+  const { playerName, setPlayerName, activeDeck, setSeed, setMode, setArenaMode, lanHost, setLanHost } = useAppState();
   const [name, setName] = useState(playerName);
+  const [hostInput, setHostInput] = useState(lanHost || 'localhost:3001');
   const { cards } = useDeckPreview(activeDeck?.seed);
 
   const TokenImg = new URL('../../Assets/art/tokens/Carved Green Yin-Yang Token.png', import.meta.url).href;
 
   const onPlayLocal = () => { setArenaMode && setArenaMode('local'); setMode('arena'); };
-  const onPlayOnline = () => { setArenaMode && setArenaMode('online'); setMode('arena'); };
+  const onPlayOnline = () => { 
+    if (setLanHost) setLanHost(hostInput);
+    setArenaMode && setArenaMode('online'); 
+    setMode('arena'); 
+  };
   const goCollection = () => setMode('collection');
   const editActive = () => { if (activeDeck?.seed && setSeed) setSeed(activeDeck.seed); setMode('collection'); };
 
@@ -39,12 +44,27 @@ export default function Home() {
       </header>
 
       <main className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="lg:col-span-2 bg-white/5 border border-white/10 rounded-xl p-6">
-          <h2 className="font-semibold mb-4">Jogar</h2>
-          <div className="flex flex-wrap items-center gap-3">
-            <button className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white" onClick={onPlayLocal}>Jogar Local</button>
-            <button className="px-4 py-2 rounded bg-sky-600 hover:bg-sky-500 text-white" onClick={onPlayOnline}>Jogar Online</button>
-            <button className="px-4 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/15" onClick={goCollection}>Coleção</button>
+        <section className="lg:col-span-2 flex flex-col gap-6">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <h2 className="font-semibold mb-4">Jogar</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <button className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white" onClick={onPlayLocal}>Jogar vs CPU</button>
+              <button className="px-4 py-2 rounded bg-sky-600 hover:bg-sky-500 text-white" onClick={onPlayOnline}>Jogar Multiplayer (LAN)</button>
+              <button className="px-4 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/15" onClick={goCollection}>Coleção</button>
+            </div>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <h2 className="font-semibold mb-2">Configuração de Rede (LAN)</h2>
+            <p className="text-xs text-slate-400 mb-4">Para jogar com um amigo na mesma rede, insira o endereço IP do computador que está rodando o servidor (ex: 192.168.1.10:3001).</p>
+            <div className="flex items-center gap-2">
+              <input
+                value={hostInput}
+                onChange={(e) => setHostInput(e.target.value)}
+                placeholder="Endereço do Host (ex: localhost:3001)"
+                className="flex-1 px-3 py-1.5 border border-white/10 bg-transparent rounded text-sm text-slate-200"
+              />
+            </div>
           </div>
         </section>
 

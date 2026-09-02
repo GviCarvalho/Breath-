@@ -11,6 +11,7 @@ interface PersistedState {
   seed?: string;
   activeDeck?: { name: string; seed: string } | null;
   arenaMode?: ArenaMode;
+  lanHost?: string;
 }
 
 interface AppStateContextValue extends PersistedState {
@@ -21,10 +22,11 @@ interface AppStateContextValue extends PersistedState {
   setSeed?: (s: string) => void;
   setActiveDeck?: (d: { name: string; seed: string } | null) => void;
   setArenaMode?: (m: ArenaMode) => void;
+  setLanHost?: (h: string) => void;
 }
 
 const STORAGE_KEY = 'breath-app-state-v1';
-const DEFAULT_STATE: PersistedState = { mode: 'home', playerName: '', lastMatchId: null, seed: '', activeDeck: null, arenaMode: 'local' };
+const DEFAULT_STATE: PersistedState = { mode: 'home', playerName: '', lastMatchId: null, seed: '', activeDeck: null, arenaMode: 'local', lanHost: 'localhost:3001' };
 
 const AppStateContext = createContext<AppStateContextValue | undefined>(undefined);
 
@@ -56,6 +58,7 @@ function loadInitialState(): PersistedState {
         seed: parsed.seed ?? '',
         activeDeck: parsed.activeDeck ?? null,
         arenaMode: (mappedArenaMode === 'local' || mappedArenaMode === 'online') ? mappedArenaMode : 'local',
+        lanHost: parsed.lanHost ?? 'localhost:3001',
       };
     }
   } catch (err) {
@@ -72,20 +75,21 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [seed, setSeed] = useState<string>(initial.seed ?? '');
   const [activeDeck, setActiveDeck] = useState<{ name: string; seed: string } | null>(initial.activeDeck ?? null);
   const [arenaMode, setArenaMode] = useState<ArenaMode>(initial.arenaMode ?? 'local');
+  const [lanHost, setLanHost] = useState<string>(initial.lanHost ?? 'localhost:3001');
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.localStorage) return;
-    const payload: PersistedState = { mode, playerName, lastMatchId, seed, activeDeck, arenaMode };
+    const payload: PersistedState = { mode, playerName, lastMatchId, seed, activeDeck, arenaMode, lanHost };
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
       console.warn('[app-state] unable to persist state', err);
     }
-  }, [mode, playerName, lastMatchId, seed, activeDeck, arenaMode]);
+  }, [mode, playerName, lastMatchId, seed, activeDeck, arenaMode, lanHost]);
 
   const value = useMemo<AppStateContextValue>(
-    () => ({ mode, playerName, lastMatchId, seed, activeDeck, arenaMode, setArenaMode, setActiveDeck, setSeed, setMode, setPlayerName, setLastMatchId }),
-    [mode, playerName, lastMatchId, seed, activeDeck, arenaMode]
+    () => ({ mode, playerName, lastMatchId, seed, activeDeck, arenaMode, lanHost, setLanHost, setArenaMode, setActiveDeck, setSeed, setMode, setPlayerName, setLastMatchId }),
+    [mode, playerName, lastMatchId, seed, activeDeck, arenaMode, lanHost]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

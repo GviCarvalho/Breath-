@@ -3,6 +3,7 @@
     "version": "0.1.0",
     "private": true,
     "type": "module",
+    "main": "electron/main.cjs",
     "scripts": {
         "dev": "vite",
         "build": "tsc -b && vite build",
@@ -12,7 +13,9 @@
         "db:generate": "prisma generate",
         "db:migrate": "prisma migrate dev",
         "db:studio": "prisma studio",
-        "docker:db": "docker-compose up -d postgres"
+        "docker:db": "docker-compose up -d postgres",
+        "electron:start": "electron .",
+        "electron:build": "tsc -b && vite build --base=./ && electron-builder"
     },
     "dependencies": {
         "@prisma/adapter-pg": "^7.2.0",
@@ -45,6 +48,8 @@
         "@vitejs/plugin-react": "^4.2.0",
         "autoprefixer": "^10.4.19",
         "dotenv": "^17.2.3",
+        "electron": "^41.1.1",
+        "electron-builder": "^26.8.1",
         "postcss": "^8.4.38",
         "prisma": "^7.2.0",
         "tailwindcss": "^3.4.6",

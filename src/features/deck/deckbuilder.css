@@ -125,6 +125,20 @@
   background: linear-gradient(90deg, rgba(58,153,255,0.04), transparent);
 }
 
+/* Insert position indicators for deck tiles */
+.deckbuilder-theme .drop-before::before,
+.deckbuilder-theme .drop-after::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: rgba(58,153,255,0.9);
+  border-radius: 2px;
+}
+.deckbuilder-theme .drop-before::before { left: -6px; }
+.deckbuilder-theme .drop-after::after { right: -6px; }
+
 .deckbuilder-theme .col-span-3 .drop-target {
   display: flex;
   align-items: center;

@@ -5,6 +5,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
+import { networkInterfaces } from 'node:os';
 import passport from 'passport';
 import authRoutes from './auth/routes';
 import { verifyToken } from './lib/jwt';
@@ -602,6 +603,26 @@ server.on('upgrade', (request, socket, head) => {
   });
 });
 
+function getLocalIPs() {
+  const nets = networkInterfaces();
+  const results: string[] = [];
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]!) {
+      if (net.family === 'IPv4' && !net.internal) {
+        results.push(net.address);
+      }
+    }
+  }
+  return results;
+}
+
 server.listen(PORT, () => {
-  logServer('listening', { port: PORT, http: true, websocket: true });
+  const localIPs = getLocalIPs();
+  logServer('listening', {
+    port: PORT,
+    http: true,
+    websocket: true,
+    localIPs,
+    instructions: 'Para outros jogarem com voce, eles devem conectar em: ' + localIPs.map(ip => `${ip}:${PORT}`).join(', '),
+  });
 });
