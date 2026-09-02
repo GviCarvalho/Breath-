@@ -75,6 +75,7 @@ html,body{height:100%}
 /* CRISTAIS DE FÔLEGO */
 .crystals{display:flex; gap:8px}
 .crystal{
+  position:relative;
   width:22px; height:22px; border-radius:6px; border:1px solid #1d2736;
   background: url("../../Assets/art/tokens/Carved Green Yin-Yang Token.png") center/contain no-repeat;
   background-color:#0f1623;
@@ -168,6 +169,26 @@ html,body{height:100%}
 }
 .card:hover{--raise:calc(var(--card-raise) * -1); --scale:1.045; box-shadow: 0 22px 44px rgba(0,0,0,.5)}
 .card.selected{--raise:calc(var(--card-raise) * -4); --scale:1.06; filter: drop-shadow(0 0 14px rgba(112,240,255,.4))}
+.card:active{--scale:0.96; transition-duration: .08s;}
+
+/* 3D card: mouse-follow tilt + moving specular shine, applied to the inner
+   tcg-card so it composes independently of the outer .card's position/raise
+   transform. --tiltX/--tiltY/--shineX/--shineY are set imperatively on
+   mousemove (see components/game/ui3.tsx) so this stays 60fps with no
+   React re-render per pixel. */
+.tcg-card{
+  --tiltX: 0deg; --tiltY: 0deg;
+  transform: perspective(900px) rotateX(var(--tiltX)) rotateY(var(--tiltY)) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .2s ease;
+}
+.tcg-card:hover{ box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+.card-shine{
+  position:absolute; inset:0; z-index:25; pointer-events:none; border-radius:inherit;
+  background: radial-gradient(circle at var(--shineX,50%) var(--shineY,50%), rgba(255,255,255,.5), rgba(255,255,255,0) 45%);
+  opacity:0; transition: opacity .25s ease; mix-blend-mode: overlay;
+}
+.tcg-card:hover .card-shine{ opacity:1; }
 
 /* MÃO DO JOGADOR (leque) */
 .hand{
@@ -237,23 +258,42 @@ html,body{height:100%}
 }
 
 /* FX e animações (iguais ao protótipo) */
-.fx.hit{background:radial-gradient(220px 220px at 50% 50%, rgba(255,91,110,.55), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
-.fx.block{background:radial-gradient(220px 220px at 50% 50%, rgba(126,182,255,.5), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
-.fx.dodge{background:radial-gradient(220px 220px at 50% 50%, rgba(124,245,155,.5), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+.fx.hit{background:radial-gradient(220px 220px at 50% 50%, rgba(255,91,110,.6), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+.fx.block{background:radial-gradient(220px 220px at 50% 50%, rgba(126,182,255,.55), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
+.fx.dodge{background:radial-gradient(220px 220px at 50% 50%, rgba(124,245,155,.55), transparent 62%); animation: fxBurst .55s cubic-bezier(.15,.8,.3,1) both}
 @keyframes fxBurst{
-  0%{ opacity:0; transform:scale(.55); }
-  30%{ opacity:1; transform:scale(1.08); }
-  100%{ opacity:0; transform:scale(1.4); }
+  0%{ opacity:0; transform:scale(.5); }
+  28%{ opacity:1; transform:scale(1.12); }
+  100%{ opacity:0; transform:scale(1.5); }
+}
+/* Expanding shockwave ring, layered on top of the burst glow */
+.fx.hit::after, .fx.block::after, .fx.dodge::after{
+  content:''; position:absolute; left:50%; top:50%; width:58%; height:58%;
+  transform:translate(-50%,-50%) scale(.3); border-radius:50%; border:3px solid; opacity:0;
+  animation: shockRing .5s cubic-bezier(.15,.8,.3,1) both;
+}
+.fx.hit::after{ border-color:#ff5b6e; box-shadow:0 0 18px rgba(255,91,110,.5); }
+.fx.block::after{ border-color:#7eb6ff; box-shadow:0 0 18px rgba(126,182,255,.5); }
+.fx.dodge::after{ border-color:#7cf59b; box-shadow:0 0 18px rgba(124,245,155,.5); }
+@keyframes shockRing{
+  0%{ opacity:.95; transform:translate(-50%,-50%) scale(.25); }
+  100%{ opacity:0; transform:translate(-50%,-50%) scale(2.4); }
 }
 
-/* Screen shake on a landed hit */
-.board.hit-shake{ animation: boardShake .42s cubic-bezier(.36,.07,.19,.97) both; }
+/* Screen shake + brief color flash on a landed hit */
+.board.hit-shake{ animation: boardShake .46s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes boardShake{
-  10%,90%{ transform:translate3d(-1px,0,0); }
-  20%,80%{ transform:translate3d(3px,0,0); }
-  30%,50%,70%{ transform:translate3d(-6px,0,0); }
-  40%,60%{ transform:translate3d(6px,0,0); }
+  8%,92%{ transform:translate3d(-2px,1px,0) rotate(-.15deg); }
+  20%,80%{ transform:translate3d(5px,-1px,0) rotate(.2deg); }
+  32%,50%,68%{ transform:translate3d(-9px,1px,0) rotate(-.3deg); }
+  40%,60%{ transform:translate3d(9px,-1px,0) rotate(.3deg); }
 }
+.board.hit-shake::before{
+  content:''; position:absolute; inset:0; z-index:250; pointer-events:none; border-radius:16px;
+  background: rgba(255,91,110,.16);
+  animation: hitFlash .32s ease-out both;
+}
+@keyframes hitFlash{ 0%{ opacity:1; } 100%{ opacity:0; } }
 
 /* Central impact banner (event headline) */
 .impact-banner-wrap{
@@ -301,18 +341,71 @@ html,body{height:100%}
   100%{ opacity:0; transform: translate(-50%, -160%) scale(1); }
 }
 
-/* Card pile drop effect */
-.pile-drop{ animation: pileFade .18s ease; will-change: opacity }
-@keyframes pileFade { from { opacity: 0 } to { opacity: 1 } }
+/* Hand -> table flight: a card physically travelling from where it sat in
+   the hand to the slot it lands in (see ArenaPrototype's CardFlight). The
+   trajectory itself is driven by the Web Animations API against captured
+   DOM rects; this just establishes the fixed-position launch pad and,
+   for the opponent's card, the in-flight face-down -> face-up flip rig. */
+.card-flight{
+  z-index: 500; pointer-events: none; will-change: transform;
+  filter: drop-shadow(0 14px 26px rgba(0,0,0,.5));
+}
+.card-flight-perspective{ width:100%; height:100%; perspective: 1000px; }
+.card-flight-flip{
+  position:relative; width:100%; height:100%; transform-style: preserve-3d;
+}
+.card-flight-face{ position:absolute; inset:0; backface-visibility:hidden; }
+.card-flight-face-back{ transform: rotateY(180deg); }
 
-/* theatrical fall for the inner wrapper so we don't override outer transform */
-.pile-drop .pile-fall { animation: pileFall .46s cubic-bezier(.2,.95,.3,1) both; transform-origin: 50% 50%; }
-@keyframes pileFall {
-  0%   { transform: translateY(-140px) rotate(2deg) scale(1.04); filter: drop-shadow(0 18px 22px rgba(0,0,0,.45)); opacity:.0 }
-  55%  { transform: translateY(0px) rotate(0deg) scale(1);   filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); opacity:1 }
-  75%  { transform: translateY(10px) rotate(-0.6deg) scale(.997) }
-  90%  { transform: translateY(-4px) rotate(0.2deg)  scale(1.002) }
-  100% { transform: translateY(0px) rotate(0deg)     scale(1) }
+/* The card that has landed and is now resting on the table. No squash: a
+   solid object doesn't deform, it just settles - conveyed with a quick,
+   uniform contact glow under it instead of stretching the card itself. */
+.table-card{ animation: tableLand .32s ease-out both; }
+@keyframes tableLand{
+  0%{ box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 16px 40px rgba(0,0,0,.35); }
+  30%{ box-shadow: 0 0 34px 6px rgba(255,255,255,.16), 0 16px 40px rgba(0,0,0,.35); }
+  100%{ box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 16px 40px rgba(0,0,0,.35); }
+}
+
+/* Breath crystals: only the one token that actually changed animates, not
+   the whole row - spending breath cracks that specific crystal and scatters
+   a couple of shards off it, gaining breath fills it back up with light. */
+.crystal{ transition: opacity .2s ease, transform .2s ease; }
+.crystal.breaking{ animation: crystalBreak .48s cubic-bezier(.25,.7,.35,1) both; }
+@keyframes crystalBreak{
+  0%{ opacity:1; transform:scale(1) rotate(0deg); filter:brightness(1); }
+  22%{ opacity:1; transform:scale(1.35) rotate(0deg); filter:brightness(2.4) saturate(1.6); }
+  55%{ opacity:.7; transform:scale(.65) rotate(-12deg); filter:brightness(1.2); }
+  100%{ opacity:.45; transform:scale(1) rotate(0deg); filter:brightness(1); }
+}
+.crystal.breaking::before, .crystal.breaking::after{
+  content:''; position:absolute; top:50%; left:50%; width:4px; height:4px;
+  background:#bfeeff; border-radius:1px; box-shadow:0 0 6px rgba(112,240,255,.9);
+  opacity:0; pointer-events:none;
+}
+.crystal.breaking::before{ animation: crystalShardA .48s ease-out both; }
+.crystal.breaking::after{ animation: crystalShardB .48s ease-out .04s both; }
+@keyframes crystalShardA{
+  0%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1; }
+  100%{ transform:translate(calc(-50% + 13px), calc(-50% - 11px)) scale(0) rotate(90deg); opacity:0; }
+}
+@keyframes crystalShardB{
+  0%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1; }
+  100%{ transform:translate(calc(-50% - 12px), calc(-50% - 9px)) scale(0) rotate(-90deg); opacity:0; }
+}
+.crystal.gaining{ animation: crystalGain .42s cubic-bezier(.25,.8,.3,1) both; }
+@keyframes crystalGain{
+  0%{ opacity:.45; transform:scale(.6); filter:brightness(.6); }
+  50%{ opacity:1; transform:scale(1.3); filter:brightness(2.2) saturate(1.5); }
+  100%{ opacity:1; transform:scale(1); filter:brightness(1); }
+}
+
+/* Posture ring pulse when a player switches stance */
+.postures.pulse .posture.active{ animation: posturePulse .5s ease; }
+@keyframes posturePulse{
+  0%{ box-shadow: 0 0 0 0 rgba(255,211,110,.55); }
+  60%{ box-shadow: 0 0 0 8px rgba(255,211,110,0); }
+  100%{ box-shadow: 0 0 0 0 rgba(255,211,110,0); }
 }
 /* Counter window visuals */
 .counter-glow{ box-shadow: 0 0 24px rgba(255,211,110,.2), inset 0 0 16px rgba(255,211,110,.12); border-color: #ffd36e55 !important; }

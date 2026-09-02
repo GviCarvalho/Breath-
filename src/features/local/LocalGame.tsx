@@ -272,8 +272,8 @@ export default function LocalGame() {
           setAnimBanner(bannerFor(kind));
           attachFloaters(kind);
           try {
-            if (kind === 'p1_hits' || kind === 'p2_hits' || kind === 'extra_p1' || kind === 'extra_p2') playSound('atk');
-            else if (kind === 'blocked_p1' || kind === 'blocked_p2') playSound('def');
+            if (kind === 'p1_hits' || kind === 'p2_hits' || kind === 'extra_p1' || kind === 'extra_p2') playSound('hit');
+            else if (kind === 'blocked_p1' || kind === 'blocked_p2') playSound('block');
             else if (kind === 'dodged_p1' || kind === 'dodged_p2') playSound('dodge');
           } catch {}
         }, timeCursor);
@@ -336,8 +336,8 @@ export default function LocalGame() {
         setAnimBanner(bannerFor(kind));
         attachFloaters(kind);
         try {
-          if (kind === 'p1_hits' || kind === 'p2_hits' || kind === 'extra_p1' || kind === 'extra_p2') playSound('atk');
-          else if (kind === 'blocked_p1' || kind === 'blocked_p2') playSound('def');
+          if (kind === 'p1_hits' || kind === 'p2_hits' || kind === 'extra_p1' || kind === 'extra_p2') playSound('hit');
+          else if (kind === 'blocked_p1' || kind === 'blocked_p2') playSound('block');
           else if (kind === 'dodged_p1' || kind === 'dodged_p2') playSound('dodge');
         } catch {}
       }, timeCursor);
@@ -611,8 +611,8 @@ export default function LocalGame() {
         setAnimBanner(bannerFor(kind));
         attachFloaters(kind);
         try {
-          if (kind === 'p1_hits' || kind === 'p2_hits' || kind === 'extra_p1' || kind === 'extra_p2') playSound('atk');
-          else if (kind === 'blocked_p1' || kind === 'blocked_p2') playSound('def');
+          if (kind === 'p1_hits' || kind === 'p2_hits' || kind === 'extra_p1' || kind === 'extra_p2') playSound('hit');
+          else if (kind === 'blocked_p1' || kind === 'blocked_p2') playSound('block');
           else if (kind === 'dodged_p1' || kind === 'dodged_p2') playSound('dodge');
         } catch {}
       }, timeCursor);

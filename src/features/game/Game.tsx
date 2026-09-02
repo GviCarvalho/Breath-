@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { bannerFor, floaterText } from '@/components/game/ui3';
 import { useMatchConnection } from '@/hooks/useMatchConnection';
 import { makeDeck, initialHandSetup, resolveRound, canPlayCard, hasAnyAvailableMove, refillHand, drawCards, MAX_BREATH, INITIAL_HAND_SIZE, HAND_SIZE as ENGINE_HAND_SIZE, type TcgCard, type PlayerState, type Priority, type ImpactKind, type DefeatTag } from '@/engine';
-import { playSound } from '@/lib/sound';
+import { playSound, type SfxKey } from '@/lib/sound';
 import { resolveSingleAction, choosePostureForAi, createPredictor, postureCharToIndex, chooseCardForAiPredictive, chooseCardForAi } from '@/engine';
 import { getAllKatas } from '@/data/katas';
 import CpuPlayer from './CpuPlayer';
@@ -13,6 +13,26 @@ import { Posture } from '../../engine/types'; // Adiciona a importação do tipo
 import { CpuPlayerState } from '@/engine/types';
 
 const HAND_SIZE = ENGINE_HAND_SIZE; // Resolve o conflito de nome
+
+// Pacing for the combat resolution timeline. Cards land on the table, then:
+// a beat to register what was played, one step per event so its banner/
+// floater/card-action animation is actually readable (not just visible),
+// and a grace pause before clearing that's long enough for the last
+// floater/banner to finish their own fade instead of being cut off.
+const ROUND_BEAT_MS = 700;
+const ROUND_STEP_MS = 1100;
+const ROUND_GRACE_MS = 900;
+
+// A round where nothing actually happened (e.g. a whiffed defense with no
+// counter) has no banner/floater/animation worth reading, so it shouldn't
+// sit through the same readable pacing as a real exchange - that would just
+// feel like dead air. Only slow down when there's something to watch.
+function roundTiming(events: ImpactKind[]) {
+  const hasVisibleEvent = events.some((k) => k !== 'none');
+  return hasVisibleEvent
+    ? { beat: ROUND_BEAT_MS, step: ROUND_STEP_MS, grace: ROUND_GRACE_MS }
+    : { beat: 150, step: 0, grace: 250 };
+}
 
 export default function Game({ isLocal }: { isLocal: boolean }) {
   const { playerName, setPlayerName, lastMatchId, setLastMatchId, activeDeck } = useAppState();
@@ -37,23 +57,23 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
 
   const timeoutRefs = useRef<number[]>([]);
 
-  type SfxKey = 'select' | 'play' | 'pass' | 'atk' | 'def' | 'dodge';
   const sfxForImpact = (kind: ImpactKind): SfxKey | null => {
     switch (kind) {
       case 'p1_hits':
       case 'p2_hits':
-        return 'atk';
+        return 'hit';
       case 'blocked_p1':
       case 'blocked_p2':
+        return 'block';
       case 'extra_granted_p1':
       case 'extra_granted_p2':
-        return 'def';
+        return 'counter';
       case 'dodged_p1':
       case 'dodged_p2':
         return 'dodge';
       case 'defeat_p1':
       case 'defeat_p2':
-        return 'atk';
+        return 'ko';
       default:
         return null;
     }
@@ -92,18 +112,19 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
       return;
     }
 
-    let cursor = 0;
+    const { beat, step, grace } = roundTiming(events);
+    let cursor = beat;
     events.forEach((kind) => {
       const handle = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(handle);
-      cursor += 450;
+      cursor += step;
     });
 
     const clearHandle = window.setTimeout(() => {
       setBanner(null);
       setImpact('none');
       setFloaters([]);
-    }, cursor + 350);
+    }, cursor + grace);
     timeoutRefs.current.push(clearHandle);
   }, [events]);
 
@@ -243,9 +264,9 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     // Timeline of events
     timeoutRefs.current.forEach((id) => window.clearTimeout(id));
     timeoutRefs.current = [];
-    let cursor = 0;
-    const step = 450;
     const oriented: ImpactKind[] = res.events.length ? res.events : ['none' as ImpactKind];
+    const { beat, step, grace } = roundTiming(oriented);
+    let cursor = beat;
     oriented.forEach((kind) => {
       const h = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(h);
@@ -253,7 +274,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     });
     const endHandle = window.setTimeout(() => {
       setImpact('none'); setBanner(null); setFloaters([]);
-    }, cursor + 350);
+    }, cursor + grace);
     timeoutRefs.current.push(endHandle);
 
     // Apply results at end
@@ -312,7 +333,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
           ]);
         }
       }
-    }, cursor + 350);
+    }, cursor + grace);
     timeoutRefs.current.push(finalizeHandle);
   };
 
@@ -466,9 +487,9 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     // Timeline de eventos (animações e banners)
     timeoutRefs.current.forEach((id) => window.clearTimeout(id));
     timeoutRefs.current = [];
-    let cursor = 0;
-    const step = 450;
-  const oriented: ImpactKind[] = result.events.length ? result.events : ['none' as ImpactKind];
+    const oriented: ImpactKind[] = result.events.length ? result.events : ['none' as ImpactKind];
+    const { beat, step, grace } = roundTiming(oriented);
+    let cursor = beat;
     oriented.forEach((kind) => {
       const h = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(h);
@@ -478,7 +499,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
       setImpact('none');
       setBanner(null);
       setFloaters([]);
-    }, cursor + 350);
+    }, cursor + grace);
     timeoutRefs.current.push(clearHandle);
 
     // Ao final da timeline, aplicar descarte/log/refill e decidir extra
@@ -527,7 +548,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
         setGameOver(result.defeated);
         setShowGameOverModal(true);
       }
-    }, cursor + 350);
+    }, cursor + grace);
     timeoutRefs.current.push(finalizeHandle);
 
     // Clear selected cards
@@ -578,9 +599,9 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     // Timeline de eventos
     timeoutRefs.current.forEach((id) => window.clearTimeout(id));
     timeoutRefs.current = [];
-    let cursor = 0;
-    const step = 450;
-  const oriented: ImpactKind[] = res.events.length ? res.events : ['none' as ImpactKind];
+    const oriented: ImpactKind[] = res.events.length ? res.events : ['none' as ImpactKind];
+    const { beat, step, grace } = roundTiming(oriented);
+    let cursor = beat;
     oriented.forEach((kind) => {
       const h = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(h);
@@ -588,7 +609,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     });
     const endHandle = window.setTimeout(() => {
       setImpact('none'); setBanner(null); setFloaters([]);
-    }, cursor + 350);
+    }, cursor + grace);
     timeoutRefs.current.push(endHandle);
 
     // Ao final: aplicar estados, descarte, log e decidir próximo passo
@@ -642,7 +663,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
         }, 0);
         timeoutRefs.current.push(h);
       }
-    }, cursor + 350);
+    }, cursor + grace);
     timeoutRefs.current.push(finalizeHandle);
   };
 
@@ -730,7 +751,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     if (drawn.length > 0) {
       setPlayerState(prev => ({ ...prev, hand: [...prev.hand, ...drawn] }));
       setPlayerDeck(deck);
-      try { playSound('select', 0.6); } catch {}
+      try { playSound('draw', 0.6); } catch {}
       setBanner(`${playerState.name} drew a card.`);
     } else {
       try { playSound('pass', 0.7); } catch {}
