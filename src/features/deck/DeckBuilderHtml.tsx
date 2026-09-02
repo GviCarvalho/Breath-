@@ -7,6 +7,7 @@ import CardBrowser from './CardBrowser';
 import { CardFront } from '@/components/game/ui3';
 import CollectionView from './CollectionView';
 import './deckbuilder.css';
+import { useFlipList } from '@/lib/flip';
 
 // ====== tipos ======
 type CollDeck = { id: string; name: string; seed: string };
@@ -41,6 +42,9 @@ export default function DeckBuilderHtml() {
   const options = useMemo(() => Array.from({ length: 57 }, (_, i) => idxToCardStatic(i) as TcgCard), []);
 
   const [deckIdx, setDeckIdx] = useState<number[]>([]);
+  // Stable IDs per slot so FLIP can track motion across reorders
+  const [slotIds, setSlotIds] = useState<string[]>([]);
+  const makeSlotId = () => 'slot_' + Math.random().toString(36).slice(2, 9);
   const [deckName, setDeckName] = useState<string>('');
   const [collection, setCollection] = useState<CollDeck[]>([]);
   const [recentlyAddedIndex, setRecentlyAddedIndex] = useState<number | null>(null);
@@ -103,7 +107,8 @@ export default function DeckBuilderHtml() {
         arr.push(k);
       }
       if (arr.length !== TOTAL_CARDS) throw new Error('seed precisa ter 21 cartas, veio ' + arr.length);
-      setDeckIdx(arr);
+  setDeckIdx(arr);
+  setSlotIds(Array.from({ length: arr.length }, () => makeSlotId()));
     } catch (e) { window.alert('Erro ao importar: ' + (e as any).message); }
   };
   useEffect(() => {
@@ -127,6 +132,8 @@ export default function DeckBuilderHtml() {
     () => deckIdx.map((idx, i) => ({ ...idxToCardStatic(idx), id: `b${i}` } as TcgCard)),
     [deckIdx]
   );
+  // FLIP: animate deck list tiles when order/size changes
+  const { setRef } = useFlipList(slotIds, { duration: 280, easing: 'cubic-bezier(.2,.9,.3,1)' });
   const countOf = (idx: number) => deckIdx.filter(i => i === idx).length;
 
   const canAdd = deckIdx.length < TOTAL_CARDS;
@@ -142,20 +149,26 @@ export default function DeckBuilderHtml() {
       recentlyAddedTimerRef.current = window.setTimeout(() => setRecentlyAddedIndex(null), 700) as unknown as number;
       return next;
     });
+    setSlotIds((ids) => [...ids, makeSlotId()]);
   };
   const duplicateAt = (i: number) => {
     if (deckIdx.length >= TOTAL_CARDS) return;
     const idx = deckIdx[i];
     if (countOf(idx) >= MAX_COPIES) { window.alert(`Máx ${MAX_COPIES} cópias desta carta.`); return; }
     setDeckIdx((arr) => { const n = arr.slice(); n.splice(i + 1, 0, idx); return n; });
+    setSlotIds((ids) => { const n = ids.slice(); n.splice(i + 1, 0, makeSlotId()); return n; });
   };
-  const removeAt = (i: number) => setDeckIdx((arr) => arr.filter((_, j) => j !== i));
-  const swapSlots = (a: number, b: number) => setDeckIdx((arr) => { const n = arr.slice(); const t = n[a]; n[a] = n[b]; n[b] = t; return n; });
+  const removeAt = (i: number) => { setDeckIdx((arr) => arr.filter((_, j) => j !== i)); setSlotIds((ids) => ids.filter((_, j) => j !== i)); };
+  const swapSlots = (a: number, b: number) => { setDeckIdx((arr) => { const n = arr.slice(); const t = n[a]; n[a] = n[b]; n[b] = t; return n; }); setSlotIds((ids) => { const n = ids.slice(); const t = n[a]; n[a] = n[b]; n[b] = t; return n; }); };
   const insertAt = (pos: number, val: number) => setDeckIdx((arr) => {
     if (arr.filter(i => i === val).length >= MAX_COPIES) return arr;
     const n = arr.slice(); n.splice(pos, 0, val); if (n.length > TOTAL_CARDS) n.length = TOTAL_CARDS; return n;
   });
+  const insertSlotIdAt = (pos: number) => setSlotIds((ids) => { const n = ids.slice(); n.splice(pos, 0, makeSlotId()); if (n.length > TOTAL_CARDS) n.length = TOTAL_CARDS; return n; });
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  // DnD state for deck tiles
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  const [insertPos, setInsertPos] = useState<number | null>(null); // position between tiles 0..length
   // drag preview state: when user starts dragging a card from the catalog we
   // show a floating CardFront that follows the cursor to emulate "holding" it.
   const [previewCard, setPreviewCard] = useState<TcgCard | null>(null);
@@ -202,7 +215,7 @@ export default function DeckBuilderHtml() {
       previewTimerRef.current = null;
     }
   };
-  const clearDeck = () => setDeckIdx([]);
+  const clearDeck = () => { setDeckIdx([]); setSlotIds([]); };
   const randomizeDeck = () => {
     const res: number[] = [];
     const counts: Record<number, number> = {};
@@ -213,6 +226,7 @@ export default function DeckBuilderHtml() {
       res.push(k);
     }
     setDeckIdx(res);
+    setSlotIds(Array.from({ length: res.length }, () => makeSlotId()));
   };
 
   // ====== coleção ops ======
@@ -347,24 +361,78 @@ export default function DeckBuilderHtml() {
                 <div className="grid grid-cols-3 gap-3 max-h-[56vh] overflow-auto db-scroll">
                   {deckCards.map((c, i) => (
                     <div
-                      key={`${c.id}-${i}`}
-                      className={`relative db-3d db-tilt ${dragOverIndex === i ? 'drop-target' : ''} ${recentlyAddedIndex === i ? 'just-added' : ''}`}
+                      ref={setRef(slotIds[i] ?? `fallback_${i}`) as any}
+                      key={slotIds[i] ?? `${c.id}-${i}`}
+                      className={`relative db-3d db-tilt ${recentlyAddedIndex === i ? 'just-added' : ''} ${(insertPos === i ? 'drop-before ' : '') + (insertPos === i + 1 ? 'drop-after ' : '')}`}
                       draggable
-                      onDragStart={(e) => { try { e.dataTransfer.setData('text/plain', `deckslot:${i}`); e.dataTransfer.effectAllowed = 'move'; try { document.body.classList.add('is-dragging'); } catch {} } catch {} }}
+                      onDragStart={(e) => {
+                        try {
+                          e.dataTransfer.setData('text/plain', `deckslot:${i}`);
+                          // Add a generic 'text' for broader compatibility
+                          try { e.dataTransfer.setData('text', `deckslot:${i}`); } catch {}
+                          e.dataTransfer.effectAllowed = 'move';
+                          setDraggingIdx(i);
+                          setInsertPos(i);
+                          try { document.body.classList.add('is-dragging'); } catch {}
+                        } catch {}
+                      }}
+                      onDragEnd={() => {
+                        setDraggingIdx(null);
+                        setInsertPos(null);
+                        setDragOverIndex(null);
+                        try { document.body.classList.remove('is-dragging'); } catch {}
+                      }}
                       onDragEnter={() => setDragOverIndex(i)}
                       onDragLeave={() => setDragOverIndex((cur) => (cur === i ? null : cur))}
-                      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverIndex(i); }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        // Determine insert position: before or after this tile
+                        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                        const halfway = rect.left + rect.width / 2;
+                        const pos = e.clientX < halfway ? i : i + 1;
+                        setInsertPos(pos);
+                        try {
+                          const txt = e.dataTransfer.getData('text') || e.dataTransfer.getData('text/plain');
+                          const kind = txt.split(':')[0];
+                          e.dataTransfer.dropEffect = kind === 'card' ? 'copy' : 'move';
+                        } catch {}
+                      }}
                       onDrop={(e) => {
                         e.preventDefault();
+                        const pos = insertPos ?? i + 1;
                         try {
-                          const txt = e.dataTransfer.getData('text/plain');
-                          if (!txt) return;
-                          const [kind, idxStr] = txt.split(':');
+                          const raw = e.dataTransfer.getData('text') || e.dataTransfer.getData('text/plain');
+                          if (!raw) return;
+                          const [kind, idxStr] = raw.split(':');
                           const n = Number(idxStr);
-                          if (kind === 'deckslot' && Number.isFinite(n)) swapSlots(i, n);
-                          else if (kind === 'card' && Number.isFinite(n)) insertAt(i + 1, n);
+                          if (kind === 'deckslot' && Number.isFinite(n)) {
+                            // Move slot from n -> pos
+                            setDeckIdx((arr) => {
+                              const copy = arr.slice();
+                              const from = Math.max(0, Math.min(copy.length - 1, n));
+                              let to = Math.max(0, Math.min(copy.length, pos));
+                              const [val] = copy.splice(from, 1);
+                              if (to > from) to -= 1;
+                              copy.splice(to, 0, val);
+                              return copy;
+                            });
+                            setSlotIds((ids) => {
+                              const copy = ids.slice();
+                              const from = Math.max(0, Math.min(copy.length - 1, n));
+                              let to = Math.max(0, Math.min(copy.length, pos));
+                              const [id] = copy.splice(from, 1);
+                              if (to > from) to -= 1;
+                              copy.splice(to, 0, id);
+                              return copy;
+                            });
+                          } else if (kind === 'card' && Number.isFinite(n)) {
+                            insertAt(pos, n);
+                            insertSlotIdAt(pos);
+                          }
                         } catch {}
                         try { document.body.classList.remove('is-dragging'); } catch {}
+                        setDraggingIdx(null);
+                        setInsertPos(null);
                         setDragOverIndex(null);
                       }}
                     >
@@ -385,11 +453,11 @@ export default function DeckBuilderHtml() {
                     onDrop={(e) => {
                       e.preventDefault();
                       try {
-                        const txt = e.dataTransfer.getData('text/plain');
+                        const txt = e.dataTransfer.getData('text') || e.dataTransfer.getData('text/plain');
                         if (!txt) return;
                         const [kind, idxStr] = txt.split(':');
                         const n = Number(idxStr);
-                        if (kind === 'card' && Number.isFinite(n)) insertAt(deckIdx.length, n);
+                        if (kind === 'card' && Number.isFinite(n)) { insertAt(deckIdx.length, n); insertSlotIdAt(deckIdx.length); }
                         else if (kind === 'deckslot' && Number.isFinite(n)) {
                           // move a slot to the end
                           setDeckIdx((arr) => {
@@ -397,6 +465,13 @@ export default function DeckBuilderHtml() {
                             if (n < 0 || n >= copy.length) return copy;
                             const [val] = copy.splice(n, 1);
                             copy.push(val);
+                            return copy;
+                          });
+                          setSlotIds((ids) => {
+                            const copy = ids.slice();
+                            if (n < 0 || n >= copy.length) return copy;
+                            const [id] = copy.splice(n, 1);
+                            copy.push(id);
                             return copy;
                           });
                         }

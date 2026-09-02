@@ -109,11 +109,21 @@ export function resolveRound(p1: PlayerState, p2: PlayerState, priorityOwner: Pr
     if (!isFree) {
       actor.breath -= costOf(card);
       log.push(`${actor.name} spends ${costOf(card)} (${card.type}).`);
+      // If spending caused defeat, abort the action immediately
+      const before = defeated;
+      defeated = checkBreathAndMark(actor, who, events, log, defeated);
+      if (defeated && defeated !== before) {
+        return; // action aborted due to defeat on spend
+      }
     }
 
     if (card.type === 'attack') {
       if (target.posture !== card.target) {
         log.push(actor.name + ' attacks ' + card.target + ', but ' + target.name + ' is in posture ' + target.posture + '; attack fails.');
+        // If target had revealed a dodge that moved them away, record that dodge
+        if (target.revealed?.type === 'dodge') {
+          events.push(who === 'p1' ? 'dodged_p2' : 'dodged_p1');
+        }
         applyFinalPosture(actor, card, log);
       } else {
         const targetDefends = target.revealed?.type === 'defense' && target.revealed.target === card.target;
@@ -137,16 +147,42 @@ export function resolveRound(p1: PlayerState, p2: PlayerState, priorityOwner: Pr
       if (oppAttackMatchesTarget) {
         log.push(`${actor.name} blocks successfully and gains an extra action!`);
         events.push(who === 'p1' ? 'extra_granted_p1' : 'extra_granted_p2');
+        // Also record the block perspective (which side was blocked)
+        const attackerWas = targetId; // the opponent
+        events.push(attackerWas === 'p1' ? 'blocked_p2' : 'blocked_p1');
       } else {
         log.push(actor.name + ' defends ' + card.target + ', but no matching attack.');
       }
       applyFinalPosture(actor, card, log);
+
+      // If an extra action was granted, immediately perform it with the first card in hand (free)
+      if (oppAttackMatchesTarget) {
+        const extraCard = actor.hand[0];
+        if (extraCard) {
+          // Reveal and resolve a free action
+          actor.revealed = extraCard;
+          const res = resolveSingleAction(actor, target, who, { free: true });
+          // Update actors reference with results
+          actors[who] = res.actor;
+          actors[targetId] = res.target;
+          // Merge events/log/consumed and defeat state
+          events.push(who === 'p1' ? 'extra_p1' : 'extra_p2');
+          for (const ev of res.events) events.push(ev);
+          for (const ln of res.log) log.push(ln);
+          consumed.p1.push(...res.consumedCards.p1);
+          consumed.p2.push(...res.consumedCards.p2);
+          defeated = res.defeated ?? defeated;
+        }
+      }
     } else if (card.type === 'dodge') {
       applyFinalPosture(actor, card, log);
       if (target.revealed?.type === 'attack' && target.revealed.target === actor.posture) {
         log.push(actor.name + ' ends up in the attack target after dodge.');
       }
     }
+
+    // Final safety check (should usually be a no-op after early check)
+    defeated = checkBreathAndMark(actor, who, events, log, defeated);
   };
 
   for (const who of finalOrder) {

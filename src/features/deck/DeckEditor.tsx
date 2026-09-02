@@ -2,6 +2,7 @@
 import React from 'react';
 import { CardFront } from '@/components/game/ui3';
 import type { TcgCard } from '@/engine';
+import { useFlipList } from '@/lib/flip';
 
 type DropPayload = { type: 'card' | 'slot'; idx: number };
 
@@ -13,6 +14,9 @@ export default function DeckEditor({
   recentlyUpdated?: number | null; selectedIdx?: number
 }) {
   const [dragOverIdx, setDragOverIdx] = React.useState<number | null>(null);
+  // Animate slot movement when the deck order changes
+  const ids = React.useMemo(() => deck.map((c) => c.id), [deck]);
+  const { setRef } = useFlipList(ids, { duration: 280, easing: 'cubic-bezier(.2,.9,.3,1)' });
   return (
     <div className="p-2">
       <div className="grid grid-cols-3 gap-4">
@@ -22,6 +26,7 @@ export default function DeckEditor({
           const isSelected = selectedIdx === i;
           return (
             <div
+              ref={setRef(card.id)}
               key={`${card.id}-${i}`}
               className={`border border-slate-700/40 rounded p-2 bg-[#0e1426] text-slate-200 flex flex-col items-center ${isOver ? 'slot-drag-over' : ''} ${justChanged ? 'slot-animate-change pop-anim' : ''} ${isSelected ? 'ring-2 ring-sky-300' : ''}`}
               draggable
