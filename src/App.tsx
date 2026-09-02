@@ -4,9 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import MainMenu from '@/pages/MainMenu';
 import LocalGamePage from '@/pages/LocalGamePage';
 import OnlineGamePage from '@/pages/OnlineGamePage';
+import CasualLobbyPage from '@/pages/CasualLobbyPage';
 import MatchPage from '@/pages/MatchPage';
 import SpectatePage from '@/pages/SpectatePage';
 import CollectionPage from '@/pages/CollectionPage';
+import ExitToMenuButton from '@/components/layout/ExitToMenuButton';
 
 export default function App() {
   const navigate = useNavigate();
@@ -31,13 +33,17 @@ export default function App() {
   }, [searchParams, navigate, refreshUser]);
 
   return (
-    <Routes>
-      <Route path="/" element={<MainMenu />} />
-      <Route path="/local" element={<LocalGamePage />} />
-      <Route path="/play/online" element={<OnlineGamePage />} />
-      <Route path="/match/:matchId" element={<MatchPage />} />
-      <Route path="/spectate/:matchId" element={<SpectatePage />} />
-      <Route path="/collection" element={<CollectionPage />} />
-    </Routes>
+    <>
+      <ExitToMenuButton />
+      <Routes>
+        <Route path="/" element={<MainMenu />} />
+        <Route path="/local" element={<LocalGamePage />} />
+        <Route path="/play/casual" element={<CasualLobbyPage />} />
+        <Route path="/play/online" element={<OnlineGamePage />} />
+        <Route path="/match/:matchId" element={<MatchPage />} />
+        <Route path="/spectate/:matchId" element={<SpectatePage />} />
+        <Route path="/collection" element={<CollectionPage />} />
+      </Routes>
+    </>
   );
 }

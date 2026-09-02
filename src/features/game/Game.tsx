@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { bannerFor, floaterText } from '@/components/game/ui3';
 import { useMatchConnection } from '@/hooks/useMatchConnection';
 import { makeDeck, initialHandSetup, resolveRound, canPlayCard, hasAnyAvailableMove, refillHand, drawCards, MAX_BREATH, INITIAL_HAND_SIZE, HAND_SIZE as ENGINE_HAND_SIZE, type TcgCard, type PlayerState, type Priority, type ImpactKind, type DefeatTag } from '@/engine';
@@ -831,23 +830,55 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
         onClickDrawP2={() => handleDrawCard('player2')}
       />
       {showGameOverModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-            <h3 className="text-lg font-semibold mb-2">Match Over</h3>
-            <p className="mb-2">{gameOverLabel()}</p>
-            <div className="mb-4 text-sm">Score (Bo3): {p1.name} {p1Wins} x {p2Wins} {p2.name}</div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(26,27,24,.45)' }}>
+          <div
+            className="w-full max-w-md"
+            style={{
+              background: '#fbfbf9', border: '2px solid #1a1b18', borderRadius: 12,
+              padding: 26, boxShadow: '0 20px 48px rgba(20,22,16,.3)',
+            }}
+          >
+            <h3
+              className="dojo-display"
+              style={{ fontFamily: "'KanedaGothicBold', system-ui, sans-serif", fontSize: 26, marginBottom: 8, color: '#1a1b18' }}
+            >
+              Combate Encerrado
+            </h3>
+            <p className="mb-2" style={{ color: '#1a1b18' }}>{gameOverLabel()}</p>
+            <div className="mb-5 text-sm" style={{ color: '#6b6f64' }}>Placar (Bo3): {p1.name} {p1Wins} x {p2Wins} {p2.name}</div>
             <div className="flex justify-end gap-3">
-              <Button onClick={() => setShowGameOverModal(false)} className="bg-slate-200 text-slate-700 hover:bg-slate-300">
-                Close
-              </Button>
+              <button
+                onClick={() => setShowGameOverModal(false)}
+                className="dojo-display"
+                style={{
+                  padding: '10px 18px', borderRadius: 8, border: '2px solid #1a1b18', background: '#fbfbf9',
+                  color: '#1a1b18', fontSize: 13, cursor: 'pointer',
+                }}
+              >
+                Fechar
+              </button>
               {Math.max(p1Wins, p2Wins) < 2 ? (
-                <Button onClick={() => { setShowGameOverModal(false); resetToNewGame(); }} className="bg-emerald-500 hover:bg-emerald-400">
-                  Next Game
-                </Button>
+                <button
+                  onClick={() => { setShowGameOverModal(false); resetToNewGame(); }}
+                  className="dojo-display"
+                  style={{
+                    padding: '10px 18px', borderRadius: 8, border: '2px solid #5c6e2f', background: '#7c9142',
+                    color: '#fff', fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  Próxima Partida
+                </button>
               ) : (
-                <Button onClick={() => { restartSeries(); setShowGameOverModal(false); }} className="bg-emerald-600 hover:bg-emerald-500">
-                  Restart Series
-                </Button>
+                <button
+                  onClick={() => { restartSeries(); setShowGameOverModal(false); }}
+                  className="dojo-display"
+                  style={{
+                    padding: '10px 18px', borderRadius: 8, border: '2px solid #5c6e2f', background: '#7c9142',
+                    color: '#fff', fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  Reiniciar Série
+                </button>
               )}
             </div>
           </div>
