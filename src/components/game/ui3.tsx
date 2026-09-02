@@ -147,7 +147,7 @@ export function Card({
 
   if (facedown) {
     return (
-      <div className={cn('rounded-xl border w-full h-full overflow-hidden bg-white', compact && 'w-20 h-28')}>
+      <div className={cn('rounded-xl w-full h-full overflow-hidden shadow-lg', compact && 'w-20 h-28')}>
         <img src={CardBackImg} alt="card back" className="w-full h-full object-cover" />
       </div>
     );
@@ -223,7 +223,7 @@ export function Card({
 
 export function CardBack() {
   return (
-    <div className="rounded-xl border w-full h-full overflow-hidden bg-white" style={{ width: 'var(--card-width, 165px)', height: 'var(--card-height, 240px)' }}>
+    <div className="rounded-xl w-full h-full overflow-hidden shadow-lg" style={{ width: 'var(--card-width, 165px)', height: 'var(--card-height, 240px)' }}>
       <img src={CardBackImg} alt="card back" className="w-full h-full object-cover" />
     </div>
   );

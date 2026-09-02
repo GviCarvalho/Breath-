@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { bannerFor, floaterText } from '@/components/game/ui3';
 import { useMatchConnection } from '@/hooks/useMatchConnection';
 import { makeDeck, initialHandSetup, resolveRound, canPlayCard, hasAnyAvailableMove, refillHand, drawCards, MAX_BREATH, INITIAL_HAND_SIZE, HAND_SIZE as ENGINE_HAND_SIZE, type TcgCard, type PlayerState, type Priority, type ImpactKind, type DefeatTag } from '@/engine';
@@ -10,6 +11,8 @@ import ArenaPrototype from '@/components/game/ArenaPrototype';
 import { useAppState } from '@/store/appState';
 import { Posture } from '../../engine/types'; // Adiciona a importação do tipo Posture
 import { CpuPlayerState } from '@/engine/types';
+
+const YinYangIcon = new URL('../../Assets/art/tokens/Carved Green Yin-Yang Token.png', import.meta.url).href;
 
 const HAND_SIZE = ENGINE_HAND_SIZE; // Resolve o conflito de nome
 
@@ -34,6 +37,7 @@ function roundTiming(events: ImpactKind[]) {
 }
 
 export default function Game({ isLocal }: { isLocal: boolean }) {
+  const navigate = useNavigate();
   const { playerName, setPlayerName, lastMatchId, setLastMatchId, activeDeck } = useAppState();
   const [impact, setImpact] = useState<ImpactKind>('none');
   const [impactSeq, setImpactSeq] = useState(0);
@@ -829,61 +833,83 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
         onClickDraw={() => handleDrawCard('player1')}
         onClickDrawP2={() => handleDrawCard('player2')}
       />
-      {showGameOverModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(26,27,24,.45)' }}>
-          <div
-            className="w-full max-w-md"
-            style={{
-              background: '#fbfbf9', border: '2px solid #1a1b18', borderRadius: 12,
-              padding: 26, boxShadow: '0 20px 48px rgba(20,22,16,.3)',
-            }}
-          >
-            <h3
-              className="dojo-display"
-              style={{ fontFamily: "'KanedaGothicBold', system-ui, sans-serif", fontSize: 26, marginBottom: 8, color: '#1a1b18' }}
+      {showGameOverModal && (() => {
+        // p1 is always "you" in the HUD (local/online), so the tone reads
+        // from p1's outcome: they lost the round, won it, or both ran dry.
+        const tone = gameOver === 'p1' ? 'bad' : gameOver === 'p2' ? 'good' : 'neutral';
+        const accent = tone === 'bad' ? '#c23b4f' : tone === 'good' ? '#7c9142' : '#8b8f80';
+        const accentDark = tone === 'bad' ? '#8f2333' : tone === 'good' ? '#5c6e2f' : '#6b6f64';
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(26,27,24,.5)' }}>
+            <div
+              className="w-full max-w-sm flex flex-col items-center text-center"
+              style={{
+                background: '#fbfbf9', border: '2px solid #1a1b18', borderRadius: 14,
+                padding: '28px 26px 24px', boxShadow: '0 24px 56px rgba(20,22,16,.35)',
+                position: 'relative', overflow: 'hidden',
+              }}
             >
-              Combate Encerrado
-            </h3>
-            <p className="mb-2" style={{ color: '#1a1b18' }}>{gameOverLabel()}</p>
-            <div className="mb-5 text-sm" style={{ color: '#6b6f64' }}>Placar (Bo3): {p1.name} {p1Wins} x {p2Wins} {p2.name}</div>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowGameOverModal(false)}
-                className="dojo-display"
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: accent }} />
+              <div
                 style={{
-                  padding: '10px 18px', borderRadius: 8, border: '2px solid #1a1b18', background: '#fbfbf9',
-                  color: '#1a1b18', fontSize: 13, cursor: 'pointer',
+                  width: 52, height: 52, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                  background: accent, marginBottom: 14, boxShadow: `0 8px 20px ${accent}55`,
                 }}
               >
-                Fechar
-              </button>
-              {Math.max(p1Wins, p2Wins) < 2 ? (
+                <img src={YinYangIcon} alt="" style={{ width: 30, height: 30, filter: 'brightness(0) invert(1)' }} />
+              </div>
+              <h3 className="dojo-display" style={{ fontSize: 24, marginBottom: 6, color: '#1a1b18' }}>
+                Combate Encerrado
+              </h3>
+              <p style={{ color: '#1a1b18', marginBottom: 14 }}>{gameOverLabel()}</p>
+              <div
+                className="dojo-display"
+                style={{
+                  fontSize: 13, padding: '6px 16px', borderRadius: 999, marginBottom: 22,
+                  border: `2px solid ${accent}`, color: accentDark, background: '#fff',
+                }}
+              >
+                {p1.name} {p1Wins} × {p2Wins} {p2.name}
+              </div>
+              <div className="flex justify-center gap-3 w-full">
                 <button
-                  onClick={() => { setShowGameOverModal(false); resetToNewGame(); }}
+                  onClick={() => { setShowGameOverModal(false); navigate('/'); }}
                   className="dojo-display"
                   style={{
-                    padding: '10px 18px', borderRadius: 8, border: '2px solid #5c6e2f', background: '#7c9142',
-                    color: '#fff', fontSize: 13, cursor: 'pointer',
+                    flex: 1, padding: '10px 18px', borderRadius: 8, border: '2px solid #1a1b18', background: '#fbfbf9',
+                    color: '#1a1b18', fontSize: 13, cursor: 'pointer',
                   }}
                 >
-                  Próxima Partida
+                  Sair
                 </button>
-              ) : (
-                <button
-                  onClick={() => { restartSeries(); setShowGameOverModal(false); }}
-                  className="dojo-display"
-                  style={{
-                    padding: '10px 18px', borderRadius: 8, border: '2px solid #5c6e2f', background: '#7c9142',
-                    color: '#fff', fontSize: 13, cursor: 'pointer',
-                  }}
-                >
-                  Reiniciar Série
-                </button>
-              )}
+                {Math.max(p1Wins, p2Wins) < 2 ? (
+                  <button
+                    onClick={() => { setShowGameOverModal(false); resetToNewGame(); }}
+                    className="dojo-display"
+                    style={{
+                      flex: 1, padding: '10px 18px', borderRadius: 8, border: `2px solid ${accentDark}`, background: accent,
+                      color: '#fff', fontSize: 13, cursor: 'pointer',
+                    }}
+                  >
+                    Próxima Partida
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { restartSeries(); setShowGameOverModal(false); }}
+                    className="dojo-display"
+                    style={{
+                      flex: 1, padding: '10px 18px', borderRadius: 8, border: `2px solid ${accentDark}`, background: accent,
+                      color: '#fff', fontSize: 13, cursor: 'pointer',
+                    }}
+                  >
+                    Reiniciar Série
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       {player2.isCPU && (
         <CpuPlayer
           player={p2}
