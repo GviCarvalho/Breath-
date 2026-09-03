@@ -28,8 +28,8 @@ interface UseMatchConnectionResult {
   logDelta: string[];
   matchList: MatchSummary[];
   setMatchList?: (arr: MatchSummary[]) => void;
-  createMatch: (name?: string) => void;
-  joinMatch: (matchId: string, name?: string) => void;
+  createMatch: (name?: string, deckSeed?: string) => void;
+  joinMatch: (matchId: string, name?: string, deckSeed?: string) => void;
   spectateMatch: (matchId: string, name?: string) => void;
   refreshMatchList: () => Promise<void>;
   playCard: (cardId: string) => void;
@@ -180,12 +180,12 @@ export function useMatchConnection(serverUrl: string = defaultWsUrl): UseMatchCo
     [handleServerMessage, serverUrl]
   );
 
-  const createMatch = useCallback((name?: string) => {
-    connect({ type: 'create_match', name });
+  const createMatch = useCallback((name?: string, deckSeed?: string) => {
+    connect({ type: 'create_match', name, deckSeed });
   }, [connect]);
 
-  const joinMatch = useCallback((id: string, name?: string) => {
-    connect({ type: 'join_match', matchId: id, name });
+  const joinMatch = useCallback((id: string, name?: string, deckSeed?: string) => {
+    connect({ type: 'join_match', matchId: id, name, deckSeed });
   }, [connect]);
 
   const spectateMatch = useCallback((id: string, name?: string) => {

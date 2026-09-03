@@ -5,7 +5,8 @@ import Game from '@/features/game/Game';
 
 export default function SpectatePage() {
   const { matchId } = useParams<{ matchId: string }>();
-  const { spectateMatch, status } = useMatchConnection();
+  const connection = useMatchConnection();
+  const { spectateMatch, status } = connection;
   const [hasJoined, setHasJoined] = useState(false);
 
   useEffect(() => {
@@ -18,5 +19,5 @@ export default function SpectatePage() {
     }
   }, [spectateMatch, status, hasJoined, matchId]);
 
-  return <Game isLocal={false} />;
+  return <Game isLocal={false} connection={connection} />;
 }

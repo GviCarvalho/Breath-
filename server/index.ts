@@ -8,17 +8,20 @@ import { randomUUID } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
 import passport from 'passport';
 import authRoutes from './auth/routes';
+import friendsRoutes from './friends/routes';
 import { verifyToken } from './lib/jwt';
 import { COOKIE_NAME } from './lib/cookie';
 import { parseCookies } from './lib/cookies';
+import { prisma } from './lib/prisma';
 import {
   makeDeck,
-  initialHandSetup,
+  drawCards,
   resolveRound,
   resolveSingleAction,
   refillHand,
   canPlayCard,
   MAX_BREATH,
+  INITIAL_HAND_SIZE,
   type PlayerState,
   type Priority,
   type TcgCard,
@@ -65,6 +68,7 @@ app.use(passport.initialize());
 
 // Auth routes
 app.use('/auth', authRoutes);
+app.use('/friends', friendsRoutes);
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -80,6 +84,10 @@ interface MatchPlayer {
   userId: string | null; // Authenticated user ID from JWT
   socket: WebSocket | null;
   state: PlayerState;
+  deck: TcgCard[];
+  // Remembered so resetMatchState (Bo3 "next game") can rebuild the SAME
+  // deck this player picked, instead of falling back to a random one.
+  deckSeed?: string;
 }
 
 interface SpectatorInfo {
@@ -89,7 +97,6 @@ interface SpectatorInfo {
 
 interface MatchRecord {
   id: string;
-  deck: TcgCard[];
   discard: TcgCard[];
   priorityOwner: Priority;
   log: string[];
@@ -111,6 +118,35 @@ interface ConnectionInfo {
 const matches = new Map<string, MatchRecord>();
 const connections = new Map<WebSocket, ConnectionInfo>();
 
+// Every authenticated WS connection registers here regardless of whether
+// it's tied to a match (match sockets) or just open in the background while
+// browsing the app (the lobby socket) - a user can have both open at once,
+// hence a Set per userId. Used to push friend-invite notifications to
+// whichever of a user's sockets are currently open.
+const presenceSockets = new Map<string, Set<WebSocket>>();
+
+function registerPresence(userId: string, socket: WebSocket) {
+  let set = presenceSockets.get(userId);
+  if (!set) {
+    set = new Set();
+    presenceSockets.set(userId, set);
+  }
+  set.add(socket);
+}
+
+function unregisterPresence(userId: string, socket: WebSocket) {
+  const set = presenceSockets.get(userId);
+  if (!set) return;
+  set.delete(socket);
+  if (set.size === 0) presenceSockets.delete(userId);
+}
+
+function sendToUser(userId: string, message: ServerMessage) {
+  const set = presenceSockets.get(userId);
+  if (!set) return;
+  for (const socket of set) send(socket, message);
+}
+
 function logServer(message: string, extra: Record<string, unknown> = {}) {
   console.log(`[server] ${message}`, extra);
 }
@@ -121,34 +157,44 @@ function send(socket: WebSocket, payload: ServerMessage) {
   }
 }
 
-function createMatchRecord(name?: string): MatchRecord {
-  const deck = makeDeck();
-  const { deck: rest, p1Hand, p2Hand } = initialHandSetup(deck);
+// Each player draws from their OWN deck (their chosen build's seed, or a
+// random one if they didn't pick a deck) instead of a single deck shared
+// between both players - otherwise deck selection from the collection had
+// no effect on online matches at all.
+function dealFreshDeck(seed?: string): { deck: TcgCard[]; hand: TcgCard[] } {
+  const built = makeDeck(seed || undefined);
+  const { deck, drawn } = drawCards(built, INITIAL_HAND_SIZE);
+  return { deck, hand: drawn };
+}
+
+function createMatchRecord(name?: string, deckSeed?: string): MatchRecord {
+  const p1Deal = dealFreshDeck(deckSeed);
   const p1: PlayerState = {
     name: name ?? 'Jogador 1',
     posture: 'A',
     breath: MAX_BREATH,
-    hand: p1Hand,
+    hand: p1Deal.hand,
     revealed: null,
   };
+  // p2's deck is dealt once they actually join with their own seed (see
+  // handleJoinMatch) - this placeholder never gets played from directly.
   const p2: PlayerState = {
     name: 'Aguardando',
     posture: 'B',
     breath: MAX_BREATH,
-    hand: p2Hand,
+    hand: [],
     revealed: null,
   };
   return {
     id: randomUUID().slice(0, 8),
-    deck: rest,
     discard: [],
     priorityOwner: 0,
     log: [],
     gameOver: null,
     createdAt: Date.now(),
     players: {
-      p1: { id: null, userId: null, socket: null, state: p1 },
-      p2: { id: null, userId: null, socket: null, state: p2 },
+      p1: { id: null, userId: null, socket: null, state: p1, deck: p1Deal.deck, deckSeed },
+      p2: { id: null, userId: null, socket: null, state: p2, deck: [] },
     },
     spectators: new Map(),
     extraPending: 'none',
@@ -160,9 +206,9 @@ function toSnapshot(match: MatchRecord): MatchSnapshot {
     matchId: match.id,
     priorityOwner: match.priorityOwner,
     gameOver: match.gameOver,
-    deckCount: match.deck.length,
     discardCount: match.discard.length,
     log: [...match.log],
+    extraPending: match.extraPending ?? 'none',
     players: {
       p1: {
         id: match.players.p1.id,
@@ -172,6 +218,8 @@ function toSnapshot(match: MatchRecord): MatchSnapshot {
         hand: match.players.p1.state.hand.map((card) => ({ ...card })),
         handCount: match.players.p1.state.hand.length,
         revealed: match.players.p1.state.revealed ? { ...match.players.p1.state.revealed } : null,
+        committed: Boolean(match.players.p1.state.revealed),
+        deckCount: match.players.p1.deck.length,
       },
       p2: {
         id: match.players.p2.id,
@@ -181,6 +229,8 @@ function toSnapshot(match: MatchRecord): MatchSnapshot {
         hand: match.players.p2.state.hand.map((card) => ({ ...card })),
         handCount: match.players.p2.state.hand.length,
         revealed: match.players.p2.state.revealed ? { ...match.players.p2.state.revealed } : null,
+        committed: Boolean(match.players.p2.state.revealed),
+        deckCount: match.players.p2.deck.length,
       },
     },
   };
@@ -225,26 +275,29 @@ function broadcastState(match: MatchRecord, events: ImpactKind[], logDelta: stri
 }
 
 function resetMatchState(match: MatchRecord) {
-  const deck = makeDeck();
-  const { deck: rest, p1Hand, p2Hand } = initialHandSetup(deck);
-  match.deck = rest;
+  // Bo3 "next game" rebuilds each player's deck from the SAME seed they
+  // originally picked, not a shared random one.
+  const p1Deal = dealFreshDeck(match.players.p1.deckSeed);
+  const p2Deal = dealFreshDeck(match.players.p2.deckSeed);
   match.discard = [];
   match.priorityOwner = 0;
   match.log = [];
   match.gameOver = null;
   match.extraPending = 'none';
+  match.players.p1.deck = p1Deal.deck;
   match.players.p1.state = {
     ...match.players.p1.state,
     posture: 'A',
     breath: MAX_BREATH,
-    hand: p1Hand,
+    hand: p1Deal.hand,
     revealed: null,
   };
+  match.players.p2.deck = p2Deal.deck;
   match.players.p2.state = {
     ...match.players.p2.state,
     posture: 'B',
     breath: MAX_BREATH,
-    hand: p2Hand,
+    hand: p2Deal.hand,
     revealed: null,
   };
 }
@@ -263,7 +316,7 @@ function handleCreateMatch(socket: WebSocket, message: Extract<ClientMessage, { 
     return;
   }
 
-  const match = createMatchRecord(message.name);
+  const match = createMatchRecord(message.name, message.deckSeed);
   const playerId = randomUUID();
   match.players.p1.id = playerId;
   match.players.p1.userId = userId;
@@ -298,6 +351,14 @@ function handleJoinMatch(socket: WebSocket, message: Extract<ClientMessage, { ty
 
   const playerId = randomUUID();
   const player = match.players[availableSlot];
+  // Deal this player their OWN deck (their chosen build's seed, if any)
+  // rather than playing with whatever createMatchRecord set up as a
+  // placeholder - this is the only place p2 (the common case) or a
+  // reconnecting p1 actually gets real cards.
+  const deal = dealFreshDeck(message.deckSeed);
+  player.deck = deal.deck;
+  player.deckSeed = message.deckSeed;
+  player.state.hand = deal.hand;
   player.id = playerId;
   player.userId = userId;
   player.socket = socket;
@@ -423,14 +484,14 @@ function handlePlayCard(socket: WebSocket, info: ConnectionInfo, message: Extrac
       return;
     }
 
-    // End of round after extra window: refill hands
+    // End of round after extra window: refill hands, each from their own deck
     match.extraPending = 'none';
-    const refillP1 = refillHand(match.players.p1.state.hand, match.deck);
+    const refillP1 = refillHand(match.players.p1.state.hand, match.players.p1.deck);
     match.players.p1.state.hand = refillP1.hand;
-    match.deck = refillP1.deck;
-    const refillP2 = refillHand(match.players.p2.state.hand, match.deck);
+    match.players.p1.deck = refillP1.deck;
+    const refillP2 = refillHand(match.players.p2.state.hand, match.players.p2.deck);
     match.players.p2.state.hand = refillP2.hand;
-    match.deck = refillP2.deck;
+    match.players.p2.deck = refillP2.deck;
 
     broadcastState(match, events, logDelta);
     return;
@@ -454,18 +515,61 @@ function handlePlayCard(socket: WebSocket, info: ConnectionInfo, message: Extrac
     const hasExtra = result.events.some((k) => k === 'extra_granted_p1' || k === 'extra_granted_p2');
 
     if (!result.defeated && !hasExtra) {
-      const refillP1 = refillHand(match.players.p1.state.hand, match.deck);
+      const refillP1 = refillHand(match.players.p1.state.hand, match.players.p1.deck);
       match.players.p1.state.hand = refillP1.hand;
-      match.deck = refillP1.deck;
-      const refillP2 = refillHand(match.players.p2.state.hand, match.deck);
+      match.players.p1.deck = refillP1.deck;
+      const refillP2 = refillHand(match.players.p2.state.hand, match.players.p2.deck);
       match.players.p2.state.hand = refillP2.hand;
-      match.deck = refillP2.deck;
+      match.players.p2.deck = refillP2.deck;
       match.extraPending = 'none';
     } else if (hasExtra) {
       match.extraPending = result.events.includes('extra_granted_p1') ? 'p1' : 'p2';
     }
 
     broadcastState(match, result.events, result.log);
+  }
+}
+
+async function handleInviteFriend(socket: WebSocket, userId: string, message: Extract<ClientMessage, { type: 'invite_friend' }>) {
+  if (!prisma) {
+    send(socket, { type: 'error', message: 'Servidor sem banco de dados configurado.' });
+    return;
+  }
+  if (!matches.has(message.matchId)) {
+    send(socket, { type: 'error', message: 'Sala nao encontrada.' });
+    return;
+  }
+
+  try {
+    const friendship = await prisma.friendship.findFirst({
+      where: {
+        status: 'accepted',
+        OR: [
+          { requesterId: userId, addresseeId: message.toUserId },
+          { requesterId: message.toUserId, addresseeId: userId },
+        ],
+      },
+    });
+    if (!friendship) {
+      send(socket, { type: 'error', message: 'Voces precisam ser amigos para convidar.' });
+      return;
+    }
+
+    if (!presenceSockets.has(message.toUserId)) {
+      send(socket, { type: 'error', message: 'Seu amigo nao esta online agora.' });
+      return;
+    }
+
+    const sender = await prisma.user.findUnique({ where: { id: userId } });
+    sendToUser(message.toUserId, {
+      type: 'match_invite',
+      matchId: message.matchId,
+      fromUserId: userId,
+      fromName: sender?.displayName ?? 'Um amigo',
+    });
+  } catch (error) {
+    console.error('[friends] invite failed', error);
+    send(socket, { type: 'error', message: 'Nao foi possivel enviar o convite.' });
   }
 }
 
@@ -531,6 +635,7 @@ wss.on('connection', (socket: WebSocket, userId?: string) => {
   // Store userId if authenticated
   if (userId) {
     logServer('ws_connection', { userId, authenticated: true });
+    registerPresence(userId, socket);
   } else {
     logServer('ws_connection', { authenticated: false });
   }
@@ -573,12 +678,20 @@ wss.on('connection', (socket: WebSocket, userId?: string) => {
       case 'leave_match':
         handleLeave(socket, info);
         break;
+      case 'invite_friend':
+        if (!userId) {
+          send(socket, { type: 'error', message: 'Nao autenticado.' });
+          return;
+        }
+        handleInviteFriend(socket, userId, parsed);
+        break;
       default:
         send(socket, { type: 'error', message: 'Mensagem desconhecida.' });
     }
   });
 
   socket.on('close', () => {
+    if (userId) unregisterPresence(userId, socket);
     const info = connections.get(socket);
     handleLeave(socket, info);
   });
