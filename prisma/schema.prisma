@@ -8,14 +8,20 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// SQLite for now - this is still a prototype with no real deployed database
+// to preserve, and it means local dev needs nothing installed (no Docker,
+// no VM) beyond Node itself. The schema here is simple enough that moving
+// back to Postgres later, if/when this actually ships, is a small change.
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 model User {
   id                String   @id @default(cuid())
-  provider          String   // "google" or "discord"
-  providerAccountId String   // User's ID from OAuth provider
+  provider          String   // "google", "discord", or "local" (email+password)
+  providerAccountId String?  // User's ID from OAuth provider; null for local accounts
+  email             String?  @unique // local accounts only; OAuth accounts don't need it
+  passwordHash      String?  // local accounts only
   displayName       String
   avatarUrl         String?
   createdAt         DateTime @default(now())

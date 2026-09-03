@@ -22,8 +22,13 @@ Thumbs.db
 # Coverage
 coverage/
 
-# Prisma
+# Prisma (SQLite dev database - resolved relative to the project root,
+# i.e. wherever the server process's cwd is, not the prisma/ folder)
 node_modules/.prisma/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 
 # Test/temp directories
 test-server/

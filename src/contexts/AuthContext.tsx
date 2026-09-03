@@ -13,6 +13,8 @@ interface AuthContextValue {
   error: string | null;
   serverConfigured: boolean;
   login: (provider: 'google' | 'discord') => void;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  registerWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -80,6 +82,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = `${serverHttpUrl}/auth/${provider}`;
   }, [serverHttpUrl]);
 
+  // Local email/password accounts hit the same JWT-cookie session the OAuth
+  // routes already issue (see server/auth/routes.ts) - /auth/login and
+  // /auth/register don't exist server-side yet, so these currently fail the
+  // same way the OAuth buttons do until that lands, but nothing else in the
+  // app needs to change once it does.
+  const registerWithEmail = useCallback(async (email: string, password: string, displayName: string) => {
+    if (!serverHttpUrl) throw new Error('Servidor não configurado');
+    setError(null);
+    const res = await fetch(`${serverHttpUrl}/auth/register`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, displayName }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({} as any));
+      const msg = data.error || 'Não foi possível criar a conta.';
+      setError(msg);
+      throw new Error(msg);
+    }
+    await refreshUser();
+  }, [serverHttpUrl, refreshUser]);
+
+  const loginWithEmail = useCallback(async (email: string, password: string) => {
+    if (!serverHttpUrl) throw new Error('Servidor não configurado');
+    setError(null);
+    const res = await fetch(`${serverHttpUrl}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({} as any));
+      const msg = data.error || 'Email ou senha incorretos.';
+      setError(msg);
+      throw new Error(msg);
+    }
+    await refreshUser();
+  }, [serverHttpUrl, refreshUser]);
+
   const logout = useCallback(async () => {
     try {
       setError(null);
@@ -99,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [serverHttpUrl]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, serverConfigured, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, error, serverConfigured, login, loginWithEmail, registerWithEmail, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

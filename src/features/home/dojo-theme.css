@@ -116,6 +116,17 @@
   cursor: not-allowed;
 }
 
+/* ---- Auth tabs (Login screen: Entrar / Criar Conta) ---- */
+.dojo-authtabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.dojo-authtab {
+  flex: 1; padding: 10px 14px; border-radius: 8px; border: 2px solid var(--dojo-border-soft);
+  background: transparent; color: var(--dojo-muted);
+  font-family: 'KanedaGothicBold', system-ui, sans-serif;
+  text-transform: uppercase; letter-spacing: .03em; font-weight: 700; font-size: 13px;
+  cursor: pointer; transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.dojo-authtab.is-active { border-color: var(--dojo-accent); color: var(--dojo-accent-dark); background: var(--dojo-accent-pale); }
+
 /* ---- Badge ("Em breve") ---- */
 .dojo-badge {
   display: inline-flex; align-items: center; font-family: inherit;
