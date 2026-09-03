@@ -5,6 +5,7 @@ import App from './App';
 import './index.css';
 import { AppStateProvider } from '@/store/appState';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { LobbyProvider } from '@/contexts/LobbyContext';
 
 // Use basename for GitHub Pages deployment
 const basename = '/Breath-/';
@@ -13,9 +14,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter basename={basename}>
       <AuthProvider>
-        <AppStateProvider>
-          <App />
-        </AppStateProvider>
+        <LobbyProvider>
+          <AppStateProvider>
+            <App />
+          </AppStateProvider>
+        </LobbyProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

@@ -24,12 +24,34 @@ model User {
   passwordHash      String?  // local accounts only
   displayName       String
   avatarUrl         String?
+  // Shareable add-a-friend code. Nullable so existing rows don't need a
+  // migration backfill - generated lazily the first time a user touches the
+  // friends feature (see server/friends/routes.ts).
+  friendCode        String?  @unique
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  sentFriendRequests     Friendship[] @relation("FriendRequester")
+  receivedFriendRequests Friendship[] @relation("FriendAddressee")
 
   @@unique([provider, providerAccountId])
   @@index([provider, providerAccountId])
   @@map("users")
+}
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      String   // "pending" | "accepted"
+  createdAt   DateTime @default(now())
+
+  requester User @relation("FriendRequester", fields: [requesterId], references: [id])
+  addressee User @relation("FriendAddressee", fields: [addresseeId], references: [id])
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+  @@map("friendships")
 }
 
 // Optional: For tracking sessions if using stateful sessions

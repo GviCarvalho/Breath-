@@ -9,7 +9,9 @@ import CasualLobbyPage from '@/pages/CasualLobbyPage';
 import MatchPage from '@/pages/MatchPage';
 import SpectatePage from '@/pages/SpectatePage';
 import CollectionPage from '@/pages/CollectionPage';
+import FriendsPage from '@/pages/FriendsPage';
 import ExitToMenuButton from '@/components/layout/ExitToMenuButton';
+import InviteToast from '@/components/layout/InviteToast';
 
 const GUEST_MODE_KEY = 'breath_guest_mode';
 
@@ -50,6 +52,7 @@ export default function App() {
   return (
     <>
       <ExitToMenuButton />
+      <InviteToast />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<RequireEntry><MainMenu /></RequireEntry>} />
@@ -59,6 +62,7 @@ export default function App() {
         <Route path="/match/:matchId" element={<MatchPage />} />
         <Route path="/spectate/:matchId" element={<SpectatePage />} />
         <Route path="/collection" element={<CollectionPage />} />
+        <Route path="/friends" element={<FriendsPage />} />
       </Routes>
     </>
   );

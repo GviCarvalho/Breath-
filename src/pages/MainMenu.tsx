@@ -31,6 +31,9 @@ export default function MainMenu() {
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{user.displayName}</div>
                   <div style={{ fontSize: 11, color: 'var(--dojo-muted)' }}>{user.provider}</div>
                 </div>
+                <button className="dojo-btn dojo-btn-ghost" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => navigate('/friends')}>
+                  Amigos
+                </button>
                 <button className="dojo-btn dojo-btn-ghost" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => logout()}>
                   Sair
                 </button>
