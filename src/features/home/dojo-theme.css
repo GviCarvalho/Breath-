@@ -46,17 +46,26 @@
   text-align: center;
 }
 .dojo-header-corner { position: absolute; top: 20px; right: 20px; }
-.dojo-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.dojo-logo-row { display: flex; align-items: center; gap: 12px; }
-.dojo-logo-token {
-  width: 84px; height: 84px; border-radius: 16px;
-  border: 3px solid var(--dojo-border);
-  background: var(--dojo-panel);
-  display: grid; place-items: center;
-  padding: 9px;
-  box-shadow: 0 10px 24px rgba(20, 22, 16, .1);
+/* The whole lockup (token + wordmark) breathes together, in - hold - out,
+   at a slow, deliberate pace rather than a snappy UI pulse - it's the one
+   piece of chrome on the page that's allowed to feel alive. */
+.dojo-hero {
+  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px;
+  animation: dojo-breathe 5.2s ease-in-out infinite;
+  transform-origin: center;
 }
-.dojo-logo-token img { width: 100%; height: 100%; object-fit: contain; }
+@keyframes dojo-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+.dojo-logo-token {
+  width: 60px; height: 60px;
+  display: grid; place-items: center;
+}
+.dojo-logo-token img {
+  width: 100%; height: 100%; object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(20,22,16,.2));
+}
 .dojo-title { font-size: clamp(52px, 10vw, 88px); line-height: .95; color: var(--dojo-ink); }
 
 /* ---- Panels ---- */
@@ -167,8 +176,12 @@
   color: #f1f2ec;
   overflow: hidden;
 }
-.dojo-locker .dojo-panel-title { color: #f1f2ec; }
-.dojo-locker .dojo-panel-sub { color: #b9bcae; }
+/* The panel-head band is the same light gray for every panel (tatami and
+   locker alike) - only the body below it goes dark - so the title/sub here
+   match the Dojo panel's ink/muted colors instead of the near-white tones
+   meant for the dark body, which made them nearly invisible on the band. */
+.dojo-locker .dojo-panel-title { color: var(--dojo-ink); }
+.dojo-locker .dojo-panel-sub { color: var(--dojo-muted); }
 .dojo-locker .dojo-btn {
   background: rgba(20, 21, 17, .55); border-color: rgba(241,242,236,.35); color: #f1f2ec;
 }

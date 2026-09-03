@@ -87,16 +87,20 @@ html,body{height:100%}
 .spacer{flex:1}
 
 /* CRISTAIS DE FÔLEGO */
-.crystals{display:flex; gap:7px}
+.crystals{display:flex; gap:7px; perspective:240px}
 .crystal{
   position:relative;
-  width:22px; height:22px; border-radius:6px; border:2px solid var(--dojo-border);
-  background: url("../../Assets/art/tokens/Carved Green Yin-Yang Token.png") center/70% no-repeat;
-  background-color: var(--dojo-gray-0);
-  opacity:.4; transform:translateZ(0);
-  transition: opacity .2s ease, transform .2s ease, background-color .2s ease;
+  width:24px; height:24px; border-radius:6px; border:2px solid var(--dojo-border);
+  background: url("../../Assets/art/tokens/Carved Green Yin-Yang Token.png") center/72% no-repeat;
+  background-color: var(--dojo-gray-1);
+  filter: grayscale(1);
+  opacity:.55; transform:translateZ(0);
+  transition: opacity .2s ease, transform .2s ease, background-color .2s ease, filter .2s ease, box-shadow .2s ease;
 }
-.crystal.on{opacity:1; background-color:var(--dojo-accent-pale); box-shadow: 0 0 0 1px var(--dojo-accent) inset;}
+.crystal.on{
+  opacity:1; background-color:var(--dojo-accent); filter:none;
+  box-shadow: 0 0 0 1px var(--dojo-accent-dark) inset, 0 2px 6px rgba(92,110,47,.4);
+}
 
 /* POSTURAS */
 .postures{display:flex; gap:7px}
@@ -166,20 +170,32 @@ html,body{height:100%}
 .board-deck .card{ width: calc(var(--card-width) * 0.9); height: calc(var(--card-height) * 0.9); border-radius:8px }
 
 
-/* CARTAS (containers para encaixar CardFront) */
+/* CARTAS (positioning/interaction wrapper only - purely functional: sizes
+   the slot and drives hover/select/tilt transforms. It used to also paint
+   its own bordered rectangle behind the card, which showed through as a
+   flat "ghost" outline around the real (already self-framed) card art and
+   broke the 3D tilt illusion - especially obvious on hover/tilt since a
+   flat rectangle doesn't tilt with it. The actual visible frame now comes
+   entirely from .tcg-card (for face-up cards) or the card-back art itself
+   (which already has its border baked into the image). */
 .card{
   --raise:0px;
   --scale:1;
-  width: var(--card-width); height: var(--card-height); border-radius:10px; border:2px solid var(--dojo-border);
-  background: var(--dojo-panel);
+  width: var(--card-width); height: var(--card-height);
   color:var(--card-ink);
-  box-shadow: 0 14px 32px rgba(20,22,16,.28);
   transform: translateY(var(--raise)) rotate(var(--tilt, 0deg)) scale(var(--scale));
   transform-origin: 50% 50%;
-  transition: transform .24s cubic-bezier(.34,1.56,.64,1), box-shadow .24s ease, filter .24s ease;
-  cursor:pointer; position:relative; overflow:hidden;
+  transition: transform .24s cubic-bezier(.34,1.56,.64,1), filter .24s ease;
+  cursor:pointer; position:relative;
 }
-.card:hover{--raise:calc(var(--card-raise) * -1); --scale:1.045; box-shadow: 0 20px 40px rgba(20,22,16,.34)}
+/* index.css sets a global .card{overflow:hidden} for an older single-class
+   overlay system; .tcg-card (nested inside) already clips its own art/name/
+   badges to the rounded card shape, so the outer wrapper doesn't need to
+   clip too - and when it does, it flush-cuts the 3D tilt's corners the
+   instant the card rotates, flattening the illusion. Scoped selector wins
+   over index.css's single-class rule regardless of stylesheet load order. */
+.hud .card{ overflow: visible; }
+.card:hover{--raise:calc(var(--card-raise) * -1); --scale:1.045;}
 .card.selected{--raise:calc(var(--card-raise) * -4); --scale:1.06; filter: drop-shadow(0 0 12px rgba(124,145,66,.55))}
 .card:active{--scale:0.96; transition-duration: .08s;}
 
@@ -225,7 +241,7 @@ html,body{height:100%}
   position:relative; z-index:10;
 }
 .back{
-  width: var(--card-width); height: var(--card-height); border-radius:10px; border:2px solid var(--dojo-border);
+  width: var(--card-width); height: var(--card-height); border-radius:10px;
   background:
     url("../../Assets/art/cards/CardBack.png") center/cover no-repeat;
   box-shadow: 0 10px 26px rgba(20,22,16,.24);
@@ -382,28 +398,35 @@ html,body{height:100%}
 /* Breath crystals: only the one token that actually changed animates, not
    the whole row - spending breath cracks that specific crystal and scatters
    a couple of shards off it, gaining breath fills it back up with light. */
-.crystal{ transition: opacity .2s ease, transform .2s ease; }
-.crystal.breaking{ animation: crystalBreak .48s cubic-bezier(.25,.7,.35,1) both; }
+.crystal{ transition: opacity .2s ease, transform .2s ease; transform-style: preserve-3d; }
+/* Losing breath used to just flash and dim the token in place; now it reads
+   as a chip getting knocked over - it rocks up, tips forward past its edge
+   (rotateX, never past 90deg so we never see a mirrored backface), drops
+   with a bit of gravity, and settles flat in its dim resting state, while
+   a couple of shard fragments scatter downward off it. */
+.crystal.breaking{ animation: crystalBreak .72s cubic-bezier(.4,0,.2,1) both; }
 @keyframes crystalBreak{
-  0%{ opacity:1; transform:scale(1) rotate(0deg); filter:brightness(1); }
-  22%{ opacity:1; transform:scale(1.35) rotate(0deg); filter:brightness(1.5) saturate(1.4); }
-  55%{ opacity:.7; transform:scale(.65) rotate(-12deg); filter:brightness(1.1); }
-  100%{ opacity:.4; transform:scale(1) rotate(0deg); filter:brightness(1); }
+  0%{ opacity:1; transform:translateY(0) rotateX(0deg) rotate(0deg) scale(1); filter:brightness(1) saturate(1); }
+  10%{ opacity:1; transform:translateY(-5px) rotateX(-28deg) rotate(-8deg) scale(1.3); filter:brightness(1.9) saturate(1.6); }
+  40%{ opacity:.9; transform:translateY(16px) rotateX(80deg) rotate(20deg) scale(.55); filter:brightness(.7) saturate(.8); }
+  62%{ opacity:.6; transform:translateY(3px) rotateX(10deg) rotate(-6deg) scale(.85); filter:grayscale(.5) brightness(1); }
+  80%{ opacity:.5; transform:translateY(-2px) rotateX(0deg) rotate(3deg) scale(1.02); filter:grayscale(.9) brightness(1); }
+  100%{ opacity:.55; transform:translateY(0) rotateX(0deg) rotate(0deg) scale(1); filter:grayscale(1) brightness(1); }
 }
 .crystal.breaking::before, .crystal.breaking::after{
-  content:''; position:absolute; top:50%; left:50%; width:4px; height:4px;
-  background:var(--dojo-accent-dark); border-radius:1px; box-shadow:0 0 5px rgba(92,110,47,.7);
+  content:''; position:absolute; top:50%; left:50%; width:6px; height:6px;
+  background:var(--dojo-accent-dark); border-radius:1px; box-shadow:0 0 6px rgba(92,110,47,.8);
   opacity:0; pointer-events:none;
 }
-.crystal.breaking::before{ animation: crystalShardA .48s ease-out both; }
-.crystal.breaking::after{ animation: crystalShardB .48s ease-out .04s both; }
+.crystal.breaking::before{ animation: crystalShardA .64s ease-in both; }
+.crystal.breaking::after{ animation: crystalShardB .64s ease-in .07s both; }
 @keyframes crystalShardA{
   0%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1; }
-  100%{ transform:translate(calc(-50% + 13px), calc(-50% - 11px)) scale(0) rotate(90deg); opacity:0; }
+  100%{ transform:translate(calc(-50% + 22px), calc(-50% + 20px)) scale(0) rotate(160deg); opacity:0; }
 }
 @keyframes crystalShardB{
   0%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1; }
-  100%{ transform:translate(calc(-50% - 12px), calc(-50% - 9px)) scale(0) rotate(-90deg); opacity:0; }
+  100%{ transform:translate(calc(-50% - 20px), calc(-50% + 17px)) scale(0) rotate(-150deg); opacity:0; }
 }
 .crystal.gaining{ animation: crystalGain .42s cubic-bezier(.25,.8,.3,1) both; }
 @keyframes crystalGain{

@@ -410,7 +410,7 @@ export default function ArenaPrototype({
             key={i}
             src={CardBackImg}
             alt="deck card"
-            style={{ position: 'absolute', inset: 0, transform: `translate(${i}px, ${-i}px)${flipped ? ' rotate(180deg)' : ''}` as any, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'calc(var(--card-width) * 0.07)', pointerEvents: 'none' }}
+            style={{ position: 'absolute', inset: 0, transform: `translate(${i}px, ${-i}px)${flipped ? ' rotate(180deg)' : ''}` as any, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'calc(var(--card-width) * 0.07)', boxShadow: '0 8px 18px rgba(20,22,16,.28)', pointerEvents: 'none' }}
           />
         ))}
         <div style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(0,0,0,.6)', color: '#cfe0ff', padding: '4px 8px', borderRadius: 8, fontWeight: 700 }}>
