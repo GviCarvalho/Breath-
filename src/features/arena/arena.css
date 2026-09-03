@@ -199,24 +199,11 @@ html,body{height:100%}
 .card.selected{--raise:calc(var(--card-raise) * -4); --scale:1.06; filter: drop-shadow(0 0 12px rgba(124,145,66,.55))}
 .card:active{--scale:0.96; transition-duration: .08s;}
 
-/* 3D card: mouse-follow tilt + moving specular shine, applied to the inner
-   tcg-card so it composes independently of the outer .card's position/raise
-   transform. --tiltX/--tiltY/--shineX/--shineY are set imperatively on
-   mousemove (see components/game/ui3.tsx) so this stays 60fps with no
-   React re-render per pixel. */
-.tcg-card{
-  --tiltX: 0deg; --tiltY: 0deg;
-  transform: perspective(900px) rotateX(var(--tiltX)) rotateY(var(--tiltY)) translateZ(0);
-  transform-style: preserve-3d;
-  transition: transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .2s ease;
-}
+/* Base .tcg-card 3D-tilt transform + .card-shine now live in index.css so
+   they work on any page, not just after the arena has mounted once this
+   session (see the comment there). This just tunes the arena's own hover
+   shadow on top of that shared mechanic. */
 .tcg-card:hover{ box-shadow: 0 4px 18px rgba(20,22,16,.3); }
-.card-shine{
-  position:absolute; inset:0; z-index:25; pointer-events:none; border-radius:inherit;
-  background: radial-gradient(circle at var(--shineX,50%) var(--shineY,50%), rgba(255,255,255,.65), rgba(255,255,255,0) 45%);
-  opacity:0; transition: opacity .25s ease; mix-blend-mode: overlay;
-}
-.tcg-card:hover .card-shine{ opacity:1; }
 
 /* MÃO DO JOGADOR (leque) */
 .hand{

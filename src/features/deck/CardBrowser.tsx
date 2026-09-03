@@ -1,12 +1,27 @@
 // CardBrowser.tsx
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CardFront } from '@/components/game/ui3';
 import type { TcgCard } from '@/engine';
+import type { DragPayload } from './DragGhost';
 
 type TypeFilter = 'all' | 'attack' | 'defense' | 'dodge';
 type Posture = 'A' | 'B' | 'C';
 
-export default function CardBrowser({ options, onAdd, density = 'comfortable', onDragPreviewStart, onDragPreviewEnd }: { options: TcgCard[]; onAdd?: (idx: number) => void; density?: 'comfortable' | 'compact'; onDragPreviewStart?: (card: TcgCard, e: React.DragEvent, offset?: { x: number; y: number }) => void; onDragPreviewEnd?: () => void }) {
+export default function CardBrowser({
+  options, density = 'comfortable',
+  onCardPointerDown, onCardPointerMove, onCardPointerUp, onCardPointerCancel, isDragSource,
+}: {
+  options: TcgCard[];
+  density?: 'comfortable' | 'compact';
+  // Click-to-add and drag-to-insert are both resolved by the parent: a
+  // pointerup that never moved past the drag threshold is treated as a
+  // click there, so this component doesn't need its own onClick/onAdd path.
+  onCardPointerDown: (e: React.PointerEvent, el: HTMLElement, payload: DragPayload) => void;
+  onCardPointerMove: (e: React.PointerEvent) => void;
+  onCardPointerUp: (e: React.PointerEvent) => void;
+  onCardPointerCancel: (e: React.PointerEvent) => void;
+  isDragSource: (idx: number) => boolean;
+}) {
   const [q, setQ] = useState('');
   const [type, setType] = useState<TypeFilter>('all');
   const [req, setReq] = useState<Posture | 'any'>('any');
@@ -35,26 +50,6 @@ export default function CardBrowser({ options, onAdd, density = 'comfortable', o
     ? 'grid-cols-3 sm:grid-cols-4 lg:grid-cols-5'
     : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
 
-  const dragRefs = useRef<Record<number, HTMLButtonElement | null>>({});
-
-  // Ensure dragging-source class is removed even if dragend doesn't fire on the original element
-  React.useEffect(() => {
-    const onGlobalDragEnd = () => {
-      try {
-        for (const k of Object.keys(dragRefs.current)) {
-          const el = dragRefs.current[Number(k)];
-          if (el && el.classList.contains('dragging-source')) el.classList.remove('dragging-source');
-        }
-      } catch {}
-    };
-    window.addEventListener('dragend', onGlobalDragEnd);
-    window.addEventListener('drop', onGlobalDragEnd);
-    return () => {
-      window.removeEventListener('dragend', onGlobalDragEnd);
-      window.removeEventListener('drop', onGlobalDragEnd);
-    };
-  }, []);
-
   return (
     <div className="db-content">
       <div className="mb-2 flex flex-col gap-2">
@@ -79,52 +74,24 @@ export default function CardBrowser({ options, onAdd, density = 'comfortable', o
         </div>
       </div>
 
-  <div className={`grid ${gridClass} gap-3 max-h-[56vh] overflow-auto db-scroll`}>
+      <div className={`grid ${gridClass} gap-3 max-h-[56vh] overflow-auto db-scroll`}>
         {filtered.map(({ card, idx }) => (
-            <button
+          <button
             type="button"
             key={`${card.id}-${idx}`}
-            ref={(el) => { dragRefs.current[idx] = el; }}
-            className="db-3d db-tilt focus:outline-none"
-            title="Click to add"
-            draggable
-            onDragStart={(e) => {
-              try {
-                  e.dataTransfer.setData('text/plain', `card:${idx}`);
-                  e.dataTransfer.effectAllowed = 'copy';
-                  const el = dragRefs.current[idx];
-                  if (el) {
-                    // add temporary class to dim the source while dragging
-                    el.classList.add('dragging-source');
-                    try { document.body.classList.add('is-dragging'); } catch {}
-                    // suppress native drag image by using a transparent 1x1 image so we can show a
-                    // custom React-driven preview that follows the cursor.
-                    try {
-                      const img = new Image();
-                      img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
-                      if (typeof e.dataTransfer.setDragImage === 'function') {
-                        e.dataTransfer.setDragImage(img, 0, 0);
-                      }
-                    } catch {}
-                    // compute pointer offset inside element so preview can be anchored at the same spot
-                    const r = el.getBoundingClientRect();
-                    const offset = { x: Math.max(0, Math.min(el.clientWidth, e.clientX - r.left)), y: Math.max(0, Math.min(el.clientHeight, e.clientY - r.top)) };
-                    // notify parent to show a floating preview anchored at offset
-                    try { if (onDragPreviewStart) onDragPreviewStart(card, e, offset); } catch {}
-                  } else {
-                    try { if (onDragPreviewStart) onDragPreviewStart(card, e); } catch {}
-                  }
-              } catch {}
+            className={`db-3d db-tilt focus:outline-none${isDragSource(idx) ? ' dragging-source' : ''}`}
+            title="Click to add, or drag into the deck"
+            style={{ touchAction: 'none', width: 'var(--card-width, 165px)', height: 'var(--card-height, 240px)' }}
+            onPointerDown={(e) => {
+              if (e.button !== 0 && e.pointerType === 'mouse') return;
+              const el = e.currentTarget;
+              el.setPointerCapture(e.pointerId);
+              onCardPointerDown(e, el, { kind: 'catalog', idx, card });
             }}
-            onDragEnd={() => {
-              try {
-                  const el = dragRefs.current[idx];
-                  if (el) el.classList.remove('dragging-source');
-                  try { document.body.classList.remove('is-dragging'); } catch {}
-                  try { if (onDragPreviewEnd) onDragPreviewEnd(); } catch {}
-              } catch {}
-            }}
-            onClick={() => onAdd && onAdd(idx)}
+            onPointerMove={onCardPointerMove}
+            onPointerUp={onCardPointerUp}
+            onPointerCancel={onCardPointerCancel}
+            onDragStart={(e) => e.preventDefault()}
           >
             <CardFront card={card} />
           </button>
@@ -133,5 +100,3 @@ export default function CardBrowser({ options, onAdd, density = 'comfortable', o
     </div>
   );
 }
-
-

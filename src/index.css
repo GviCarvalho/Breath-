@@ -91,6 +91,26 @@
 /* Compact mode tweak (keeps previous behavior) */
 .w-20.h-28 .card .card-name{ font-size: 10px; padding: 2px 6px; }
 
+/* 3D card tilt: mouse-follow rotateX/rotateY + moving specular shine.
+   --tiltX/--tiltY/--shineX/--shineY are set imperatively on mousemove (see
+   components/game/ui3.tsx) for 60fps with no React re-render per pixel.
+   This lives here (not arena.css) because it needs to work everywhere a
+   Card renders - the deck builder in particular - not just on pages that
+   happen to have mounted the arena at least once this session, since
+   arena.css is only loaded as a side effect of that component. */
+.tcg-card{
+  --tiltX: 0deg; --tiltY: 0deg;
+  transform: perspective(900px) rotateX(var(--tiltX)) rotateY(var(--tiltY)) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .2s ease;
+}
+.card-shine{
+  position:absolute; inset:0; z-index:25; pointer-events:none; border-radius:inherit;
+  background: radial-gradient(circle at var(--shineX,50%) var(--shineY,50%), rgba(255,255,255,.5), rgba(255,255,255,0) 45%);
+  opacity:0; transition: opacity .25s ease; mix-blend-mode: overlay;
+}
+.tcg-card:hover .card-shine{ opacity:1; }
+
 
 /* ====== Custom Font for Card Names ====== */
 @font-face {
