@@ -1,16 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import '@/features/home/dojo-theme.css';
 
 export default function MainMenu() {
   const navigate = useNavigate();
-  const { user, loading, login, logout, serverConfigured } = useAuth();
-  const [showLoginMenu, setShowLoginMenu] = useState(false);
+  const { user, loading, logout, serverConfigured } = useAuth();
 
   const TokenImg = new URL('../Assets/art/tokens/Carved Green Yin-Yang Token.png', import.meta.url).href;
-  const GoogleIcon = new URL('../Assets/icons/google.svg', import.meta.url).href;
-  const DiscordIcon = new URL('../Assets/icons/discord.svg', import.meta.url).href;
   const WarningIcon = new URL('../Assets/icons/warning-dark.png', import.meta.url).href;
   const VsAiIcon = new URL('../Assets/icons/vs-ai-dark.png', import.meta.url).href;
   const DeckIcon = new URL('../Assets/icons/deck-dark.svg', import.meta.url).href;
@@ -38,41 +35,7 @@ export default function MainMenu() {
                   Sair
                 </button>
               </div>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <button
-                  className="dojo-btn"
-                  style={{ width: 'auto', padding: '8px 22px' }}
-                  onClick={() => setShowLoginMenu(!showLoginMenu)}
-                  disabled={!serverConfigured}
-                  title={!serverConfigured ? 'Servidor não configurado' : ''}
-                >
-                  Entrar
-                </button>
-                {showLoginMenu && serverConfigured && (
-                  <div
-                    style={{
-                      position: 'absolute', right: 0, marginTop: 8, width: 190, zIndex: 50,
-                      background: 'var(--dojo-panel)', border: '2px solid var(--dojo-border)', borderRadius: 8,
-                      boxShadow: '0 10px 24px rgba(20,22,16,.12)', overflow: 'hidden',
-                    }}
-                  >
-                    <button
-                      onClick={() => { login('google'); setShowLoginMenu(false); }}
-                      style={{ width: '100%', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', borderBottom: '1px solid var(--dojo-border-soft)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--dojo-ink)' }}
-                    >
-                      <img src={GoogleIcon} alt="" style={{ width: 20, height: 20, borderRadius: 4 }} /> Google
-                    </button>
-                    <button
-                      onClick={() => { login('discord'); setShowLoginMenu(false); }}
-                      style={{ width: '100%', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--dojo-ink)' }}
-                    >
-                      <img src={DiscordIcon} alt="" style={{ width: 20, height: 20 }} /> Discord
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+            ) : null}
           </div>
 
           <div className="dojo-hero">
