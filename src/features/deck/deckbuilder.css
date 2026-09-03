@@ -46,14 +46,9 @@
   box-shadow: 0 10px 24px rgba(20,22,16,.08);
 }
 
-/* Make the TCG card background transparent inside the deckbuilder/catalog so
-   the artwork appears flush with the page without a solid rectangle behind it. */
-.deckbuilder-theme .tcg-card {
-  background: transparent !important;
-  border: none !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
+/* Cards keep their normal bordered/shadowed .tcg-card frame here (from
+   ui3.tsx/index.css) - same white-bg, ink-border look as the arena and
+   catalog, so a card doesn't change identity just by moving between them. */
 
 .deckbuilder-theme .db-empty-cta {
   background: var(--db-elev);
@@ -69,7 +64,11 @@
 .deckbuilder-theme input::placeholder { color: rgba(26,27,24,.4); }
 
 .deckbuilder-theme .db-card .db-tilt:hover {
-  transform: translateY(-6px) rotateX(3deg) rotateY(3deg);
+  /* No rotateX/rotateY here - the inner .tcg-card already tilts live off
+     real mouse position (see ui3.tsx). Rotating this wrapper too made the
+     card's own bounding rect shift under the still-moving cursor every
+     frame, so the two fought and the tilt visibly juddered. */
+  transform: translateY(-6px);
   box-shadow: 0 24px 44px rgba(20,22,16,.22);
 }
 
@@ -125,7 +124,7 @@
   transition: transform .2s ease, box-shadow .2s ease;
 }
 .deckbuilder-theme .db-tilt:hover {
-  transform: translateY(-4px) rotateX(2deg) rotateY(2deg);
+  transform: translateY(-4px);
   box-shadow: 0 20px 36px rgba(20,22,16,.22);
 }
 
@@ -167,28 +166,43 @@
 .deckbuilder-theme .just-added { animation: just-added-pop .7s cubic-bezier(.2,.9,.3,1); }
 @keyframes just-added-pop { 0% { transform: scale(.8) translateY(6px); opacity: 0; } 60% { transform: scale(1.05) translateY(-4px); opacity: 1; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
 
+/* Removed cards shrink and flick away instead of just vanishing - state
+   only actually drops them once this finishes (see removeAt in
+   DeckBuilderHtml), so the FLIP reflow of the remaining tiles starts from
+   a clean slate rather than fighting this exit. */
+.deckbuilder-theme .is-removing { animation: card-remove-pop .22s cubic-bezier(.4,0,.6,1) both; pointer-events: none; }
+@keyframes card-remove-pop { 0% { transform: scale(1) rotate(0deg); opacity: 1; } 100% { transform: scale(.55) rotate(8deg) translateY(10px); opacity: 0; } }
+
 /* subtle pulse when a drop-target is active */
 .deckbuilder-theme .drop-target { animation: drop-pulse 1s ease-in-out infinite; }
 @keyframes drop-pulse { 0% { box-shadow: 0 0 0 0 rgba(124,145,66,.15); } 70% { box-shadow: 0 0 0 10px rgba(124,145,66,0); } 100% { box-shadow: 0 0 0 0 rgba(124,145,66,0); } }
 
-/* dim the original element while dragging to emphasize the drag-preview */
-.deckbuilder-theme .dragging-source { opacity: 1; transform: scale(.98); filter: none; transition: transform .12s ease; }
-.deckbuilder-theme .dragging-source,
-.deckbuilder-theme .dragging-source * {
-  opacity: 1 !important;
+/* Dim the source card while its live 3D twin is being dragged elsewhere -
+   it reads as "picked up", and the low opacity keeps the deck-list FLIP
+   reflow (which still renders this element mid-drag) from looking like a
+   second, fully-opaque copy of the same card. */
+.deckbuilder-theme .dragging-source { opacity: .28; transform: scale(.94); transition: opacity .12s ease, transform .12s ease; }
+
+/* Grab cursor on anything draggable via pointer events. Card() (ui3.tsx)
+   always puts its own cursor-pointer utility on the inner .tcg-card, which
+   covers almost the entire card - without this override the cursor flips
+   between "grab" (wrapper) and "pointer" (inner card) as the mouse crosses
+   that boundary. Higher-specificity selector wins regardless of Tailwind's
+   injection order, so .tcg-card just inherits whatever the wrapper wants. */
+.deckbuilder-theme .db-3d, .deckbuilder-theme .card { cursor: grab; }
+.deckbuilder-theme .db-3d .tcg-card, .deckbuilder-theme .card .tcg-card { cursor: inherit; }
+.deckbuilder-theme .dragging-source, .deckbuilder-theme .dragging-source .tcg-card { cursor: grabbing; }
+
+/* Prevent text selection turning into a drag-cancelling mess while a
+   pointer-driven card drag is in flight. */
+.is-dragging, .is-dragging * { user-select: none !important; }
+
+/* The floating card that follows the pointer during a drag - a real
+   CardFront, not a flat snapshot, so it keeps the same 3D tilt as
+   everywhere else in the app. */
+.deck-drag-ghost {
+  will-change: transform, left, top;
+  filter: drop-shadow(0 20px 40px rgba(20,22,16,.4));
 }
-
-/* Use native grab/grabbing cursors for draggable cards */
-.deckbuilder-theme button[draggable], .deckbuilder-theme .db-3d { cursor: grab; }
-.deckbuilder-theme button[draggable]:active, .deckbuilder-theme button[draggable].dragging-source { cursor: grabbing; }
-
-.deckbuilder-theme .card {
-  cursor: grab;
-}
-
-.deckbuilder-theme .card:active {
-  cursor: grabbing;
-}
-
-/* Global body class while dragging: hide native cursor so we can render a custom hand+card preview. */
-.is-dragging, .is-dragging * { cursor: none !important; }
+.deck-drag-ghost.is-dragging-card { transform: scale(1.04); }
+.deck-drag-ghost .tcg-card { transition: transform .12s cubic-bezier(.2,.8,.3,1); }

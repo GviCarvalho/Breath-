@@ -148,7 +148,7 @@ export function Card({
   if (facedown) {
     return (
       <div className={cn('rounded-xl w-full h-full overflow-hidden shadow-lg', compact && 'w-20 h-28')}>
-        <img src={CardBackImg} alt="card back" className="w-full h-full object-cover" />
+        <img src={CardBackImg} alt="card back" draggable={false} className="w-full h-full object-cover" />
       </div>
     );
   }
@@ -172,7 +172,7 @@ export function Card({
       {/* Use the card art image itself and keep the full art visible inside the card
           object-contain preserves the whole artwork so badges/titles remain readable
           while the parent .card (in CSS) controls the actual visible size via --card-width/height */}
-  <img src={imgSrc} className="card-art absolute inset-0 w-full h-full object-contain bg-[var(--card)]" />
+  <img src={imgSrc} draggable={false} className="card-art absolute inset-0 w-full h-full object-contain bg-[var(--card)]" />
 
       {/* Name at top center (no box, no wrap, black font) */}
       {/* Title: scale with card width so it stays proportional on different card sizes */}
@@ -190,6 +190,7 @@ export function Card({
             <img
               src={reqBadge}
               alt="requires"
+              draggable={false}
               style={{ width: 'calc(var(--card-width) * 0.14)', height: 'auto', maxHeight: 'calc(var(--card-height) * 0.14)', borderRadius: '6px', objectFit: 'contain' }}
             />
           )}
@@ -197,6 +198,7 @@ export function Card({
             <img
               src={tgtBadge}
               alt="target"
+              draggable={false}
               style={{ width: 'calc(var(--card-width) * 0.14)', height: 'auto', maxHeight: 'calc(var(--card-height) * 0.14)', borderRadius: '6px', objectFit: 'contain' }}
             />
           )}
@@ -204,6 +206,7 @@ export function Card({
             <img
               src={finBadge}
               alt="final"
+              draggable={false}
               style={{ width: 'calc(var(--card-width) * 0.14)', height: 'auto', maxHeight: 'calc(var(--card-height) * 0.14)', borderRadius: '6px', objectFit: 'contain' }}
             />
           )}
@@ -224,7 +227,7 @@ export function Card({
 export function CardBack() {
   return (
     <div className="rounded-xl w-full h-full overflow-hidden shadow-lg" style={{ width: 'var(--card-width, 165px)', height: 'var(--card-height, 240px)' }}>
-      <img src={CardBackImg} alt="card back" className="w-full h-full object-cover" />
+      <img src={CardBackImg} alt="card back" draggable={false} className="w-full h-full object-cover" />
     </div>
   );
 }

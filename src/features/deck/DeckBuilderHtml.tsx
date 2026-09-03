@@ -6,8 +6,10 @@ import { useAppState } from '@/store/appState';
 import CardBrowser from './CardBrowser';
 import { CardFront } from '@/components/game/ui3';
 import CollectionView from './CollectionView';
+import DragGhost, { type DragPayload, type FloatingCard } from './DragGhost';
 import './deckbuilder.css';
 import { useFlipList } from '@/lib/flip';
+import { playSound } from '@/lib/sound';
 
 // ====== tipos ======
 type CollDeck = { id: string; name: string; seed: string };
@@ -16,6 +18,7 @@ type CollDeck = { id: string; name: string; seed: string };
 const COLL_KEY = 'breath_deck_collection_v1';
 const MAX_COPIES = 3;
 const TOTAL_CARDS = 21;
+const DRAG_THRESHOLD = 6;
 
 // ====== helpers seed ======
 const isValidV1 = (s?: string) => {
@@ -32,6 +35,7 @@ const idxToChar = (i: number) => ALPHABET[i % 64] ?? 'A';
 const checksumFor = (arr: number[]) => arr.reduce((s, v) => s + (v % 64), 0) % 64;
 const buildSeedV1FromIdx = (arr: number[]) =>
   arr.length === TOTAL_CARDS ? `v1.${arr.map(idxToChar).join('')}${idxToChar(checksumFor(arr))}` : null;
+const makeSlotId = () => 'slot_' + Math.random().toString(36).slice(2, 9);
 
 export default function DeckBuilderHtml() {
   const { setMode, setSeed, seed: appSeed, activeDeck, setActiveDeck, setArenaMode } = useAppState();
@@ -44,7 +48,6 @@ export default function DeckBuilderHtml() {
   const [deckIdx, setDeckIdx] = useState<number[]>([]);
   // Stable IDs per slot so FLIP can track motion across reorders
   const [slotIds, setSlotIds] = useState<string[]>([]);
-  const makeSlotId = () => 'slot_' + Math.random().toString(36).slice(2, 9);
   const [deckName, setDeckName] = useState<string>('');
   const [collection, setCollection] = useState<CollDeck[]>([]);
   const [recentlyAddedIndex, setRecentlyAddedIndex] = useState<number | null>(null);
@@ -137,84 +140,48 @@ export default function DeckBuilderHtml() {
   const countOf = (idx: number) => deckIdx.filter(i => i === idx).length;
 
   const canAdd = deckIdx.length < TOTAL_CARDS;
-  const addToDeck = (idx: number) => {
-    if (!canAdd) { window.alert('Deck cheio (21).'); return; }
-    if (countOf(idx) >= MAX_COPIES) { window.alert(`Máx ${MAX_COPIES} cópias desta carta.`); return; }
-    setDeckIdx((arr) => {
-      const pos = arr.length;
-      const next = [...arr, idx];
-      // mark recently added slot for animation
-      if (recentlyAddedTimerRef.current) window.clearTimeout(recentlyAddedTimerRef.current);
-      setRecentlyAddedIndex(pos);
-      recentlyAddedTimerRef.current = window.setTimeout(() => setRecentlyAddedIndex(null), 700) as unknown as number;
-      return next;
-    });
-    setSlotIds((ids) => [...ids, makeSlotId()]);
+
+  const triggerJustAdded = (pos: number) => {
+    if (recentlyAddedTimerRef.current) window.clearTimeout(recentlyAddedTimerRef.current);
+    setRecentlyAddedIndex(pos);
+    recentlyAddedTimerRef.current = window.setTimeout(() => setRecentlyAddedIndex(null), 700) as unknown as number;
   };
+
   const duplicateAt = (i: number) => {
     if (deckIdx.length >= TOTAL_CARDS) return;
     const idx = deckIdx[i];
     if (countOf(idx) >= MAX_COPIES) { window.alert(`Máx ${MAX_COPIES} cópias desta carta.`); return; }
+    try { playSound('select', 0.5); } catch {}
+    triggerJustAdded(i + 1);
     setDeckIdx((arr) => { const n = arr.slice(); n.splice(i + 1, 0, idx); return n; });
     setSlotIds((ids) => { const n = ids.slice(); n.splice(i + 1, 0, makeSlotId()); return n; });
   };
-  const removeAt = (i: number) => { setDeckIdx((arr) => arr.filter((_, j) => j !== i)); setSlotIds((ids) => ids.filter((_, j) => j !== i)); };
-  const swapSlots = (a: number, b: number) => { setDeckIdx((arr) => { const n = arr.slice(); const t = n[a]; n[a] = n[b]; n[b] = t; return n; }); setSlotIds((ids) => { const n = ids.slice(); const t = n[a]; n[a] = n[b]; n[b] = t; return n; }); };
+
+  // Removal plays a brief shrink-and-fade before actually leaving the deck
+  // arrays, instead of just vanishing - looked up by the stable slotId (not
+  // the index) at the moment the timeout fires, so removing two cards in
+  // quick succession can't end up deleting the wrong one.
+  const slotIdsRef = useRef<string[]>([]);
+  useEffect(() => { slotIdsRef.current = slotIds; }, [slotIds]);
+  const [removingSlotIds, setRemovingSlotIds] = useState<Set<string>>(new Set());
+  const removeAt = (i: number) => {
+    const slotId = slotIds[i];
+    if (!slotId || removingSlotIds.has(slotId)) return;
+    try { playSound('pass', 0.5); } catch {}
+    setRemovingSlotIds((cur) => { const n = new Set(cur); n.add(slotId); return n; });
+    window.setTimeout(() => {
+      const idx = slotIdsRef.current.indexOf(slotId);
+      setRemovingSlotIds((cur) => { const n = new Set(cur); n.delete(slotId); return n; });
+      if (idx === -1) return;
+      setDeckIdx((arr) => arr.filter((_, j) => j !== idx));
+      setSlotIds((ids) => ids.filter((_, j) => j !== idx));
+    }, 220);
+  };
   const insertAt = (pos: number, val: number) => setDeckIdx((arr) => {
     if (arr.filter(i => i === val).length >= MAX_COPIES) return arr;
     const n = arr.slice(); n.splice(pos, 0, val); if (n.length > TOTAL_CARDS) n.length = TOTAL_CARDS; return n;
   });
-  const insertSlotIdAt = (pos: number) => setSlotIds((ids) => { const n = ids.slice(); n.splice(pos, 0, makeSlotId()); if (n.length > TOTAL_CARDS) n.length = TOTAL_CARDS; return n; });
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  // DnD state for deck tiles
-  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
-  const [insertPos, setInsertPos] = useState<number | null>(null); // position between tiles 0..length
-  // drag preview state: when user starts dragging a card from the catalog we
-  // show a floating CardFront that follows the cursor to emulate "holding" it.
-  const [previewCard, setPreviewCard] = useState<TcgCard | null>(null);
-  const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
-  const previewOffsetRef = useRef<{ x: number; y: number } | null>(null);
-  const previewTimerRef = useRef<number | null>(null);
-
-  const onDragPreviewStart = (card: TcgCard, e: React.DragEvent, offset?: { x: number; y: number }) => {
-    setPreviewCard(card);
-    previewOffsetRef.current = offset ?? null;
-
-    const computePos = (cx: number, cy: number) => {
-      if (!previewOffsetRef.current) return { x: cx + 12, y: cy + 12 };
-      return { x: cx - previewOffsetRef.current.x + 12, y: cy - previewOffsetRef.current.y + 12 };
-    };
-    setPreviewPos(computePos(e.clientX, e.clientY));
-
-    const onDocDrag = (ev: DragEvent) => {
-      try { ev.preventDefault(); if ((ev as any).dataTransfer) (ev as any).dataTransfer.dropEffect = 'copy'; } catch {}
-      setPreviewPos(computePos(ev.clientX, ev.clientY));
-    };
-    document.addEventListener('dragover', onDocDrag);
-
-    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
-    previewTimerRef.current = window.setTimeout(() => {
-      document.removeEventListener('dragover', onDocDrag);
-    }, 60000) as unknown as number;
-
-    (onDragPreviewStart as any)._listener = onDocDrag;
-  };
-
-  const onDragPreviewEnd = () => {
-    setPreviewCard(null);
-    setPreviewPos(null);
-    previewOffsetRef.current = null;
-
-    try {
-      const l = (onDragPreviewStart as any)._listener as ((ev: DragEvent) => void) | undefined;
-      if (l) document.removeEventListener('dragover', l);
-    } catch {}
-
-    if (previewTimerRef.current) {
-      window.clearTimeout(previewTimerRef.current);
-      previewTimerRef.current = null;
-    }
-  };
+  const insertSlotIdAt = (pos: number, id: string = makeSlotId()) => setSlotIds((ids) => { const n = ids.slice(); n.splice(pos, 0, id); if (n.length > TOTAL_CARDS) n.length = TOTAL_CARDS; return n; });
   const clearDeck = () => { setDeckIdx([]); setSlotIds([]); };
   const randomizeDeck = () => {
     const res: number[] = [];
@@ -227,6 +194,169 @@ export default function DeckBuilderHtml() {
     }
     setDeckIdx(res);
     setSlotIds(Array.from({ length: res.length }, () => makeSlotId()));
+  };
+
+  // ====== drag & drop (Pointer Events) ------------------------------------
+  // Native HTML5 drag-and-drop is coarse (dragover fires in throttled
+  // bursts, not per frame) and forces a hack to suppress the browser's own
+  // ghost image. This drives the drag off raw pointer events instead: the
+  // floating card is a real CardFront (same 3D tilt as everywhere else),
+  // repositioned every pointermove, with a short WAAPI flight into its
+  // landed slot on drop - the same "solid object, no squash" landing used
+  // in the arena.
+  const deckListRef = useRef<HTMLDivElement | null>(null);
+  const [floating, setFloatingState] = useState<FloatingCard | null>(null);
+  const floatingRef = useRef<FloatingCard | null>(null);
+  const setFloating = (next: FloatingCard | null) => { floatingRef.current = next; setFloatingState(next); };
+
+  const dragPendingRef = useRef<{
+    payload: DragPayload; el: HTMLElement; pointerId: number;
+    grabDx: number; grabDy: number; width: number; height: number;
+    startX: number; startY: number; moved: boolean;
+  } | null>(null);
+
+  const computeInsertPos = (clientX: number, clientY: number): number | null => {
+    const container = deckListRef.current;
+    if (!container) return null;
+    const containerRect = container.getBoundingClientRect();
+    const PAD = 32;
+    if (
+      clientX < containerRect.left - PAD || clientX > containerRect.right + PAD ||
+      clientY < containerRect.top - PAD || clientY > containerRect.bottom + PAD
+    ) {
+      return null;
+    }
+    const tiles = Array.from(container.querySelectorAll<HTMLElement>('[data-deck-tile]'));
+    if (tiles.length === 0) return 0;
+    let best: { dist: number; pos: number } | null = null;
+    for (const el of tiles) {
+      const idx = Number(el.dataset.deckTile);
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const d = Math.hypot(clientX - cx, clientY - cy);
+      if (!best || d < best.dist) {
+        best = { dist: d, pos: clientX < cx ? idx : idx + 1 };
+      }
+    }
+    return best ? Math.max(0, Math.min(deckIdx.length, best.pos)) : deckIdx.length;
+  };
+
+  const handleCardPointerDown = (e: React.PointerEvent, el: HTMLElement, payload: DragPayload) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const rect = el.getBoundingClientRect();
+    dragPendingRef.current = {
+      payload, el, pointerId: e.pointerId,
+      grabDx: e.clientX - rect.left, grabDy: e.clientY - rect.top,
+      width: rect.width, height: rect.height,
+      startX: e.clientX, startY: e.clientY, moved: false,
+    };
+  };
+
+  const handleCardPointerMove = (e: React.PointerEvent) => {
+    const pending = dragPendingRef.current;
+    if (!pending) return;
+    const dx = e.clientX - pending.startX;
+    const dy = e.clientY - pending.startY;
+    if (!pending.moved) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      pending.moved = true;
+      try { document.body.classList.add('is-dragging'); } catch {}
+      try { playSound('cardWhoosh', 0.45); } catch {}
+    }
+    setFloating({
+      phase: 'dragging',
+      payload: pending.payload,
+      x: e.clientX, y: e.clientY,
+      grabDx: pending.grabDx, grabDy: pending.grabDy,
+      width: pending.width, height: pending.height,
+      insertPos: computeInsertPos(e.clientX, e.clientY),
+    });
+  };
+
+  const handleCardPointerUp = (e: React.PointerEvent) => {
+    const pending = dragPendingRef.current;
+    dragPendingRef.current = null;
+    if (!pending) return;
+    try { pending.el.releasePointerCapture(pending.pointerId); } catch {}
+    try { document.body.classList.remove('is-dragging'); } catch {}
+
+    if (!pending.moved) {
+      // A plain click/tap: still worth a quick flight into place instead of
+      // teleporting straight into the list, so add-by-click reads the same
+      // as add-by-drag rather than looking like the "real" animated path.
+      if (pending.payload.kind === 'catalog') {
+        const idx = pending.payload.idx;
+        if (!canAdd) { window.alert('Deck cheio (21).'); setFloating(null); return; }
+        if (countOf(idx) >= MAX_COPIES) { window.alert(`Máx ${MAX_COPIES} cópias desta carta.`); setFloating(null); return; }
+        const pos = deckIdx.length;
+        const newId = makeSlotId();
+        const rect = pending.el.getBoundingClientRect();
+        insertAt(pos, idx);
+        insertSlotIdAt(pos, newId);
+        triggerJustAdded(pos);
+        try { playSound('cardWhoosh', 0.5); } catch {}
+        setFloating({ phase: 'landing', payload: pending.payload, from: { x: rect.left, y: rect.top, width: rect.width, height: rect.height }, targetSlotId: newId });
+      } else {
+        setFloating(null);
+      }
+      return;
+    }
+
+    const cur = floatingRef.current;
+    const payload = pending.payload;
+    if (!cur || cur.phase !== 'dragging' || cur.insertPos === null) {
+      setFloating(null);
+      return;
+    }
+
+    const insertPos = cur.insertPos;
+    const from = { x: cur.x - cur.grabDx, y: cur.y - cur.grabDy, width: cur.width, height: cur.height };
+
+    if (payload.kind === 'catalog') {
+      if (deckIdx.length >= TOTAL_CARDS || countOf(payload.idx) >= MAX_COPIES) {
+        setFloating(null);
+        return;
+      }
+      const newId = makeSlotId();
+      insertAt(insertPos, payload.idx);
+      insertSlotIdAt(insertPos, newId);
+      triggerJustAdded(insertPos);
+      setFloating({ phase: 'landing', payload, from, targetSlotId: newId });
+    } else {
+      const fromIdx = payload.idx;
+      const to = insertPos;
+      if (to === fromIdx || to === fromIdx + 1) {
+        setFloating(null); // dropped back roughly on itself
+        return;
+      }
+      setDeckIdx((arr) => {
+        const copy = arr.slice();
+        const [val] = copy.splice(fromIdx, 1);
+        let insertTo = to; if (insertTo > fromIdx) insertTo -= 1;
+        copy.splice(insertTo, 0, val);
+        return copy;
+      });
+      setSlotIds((ids) => {
+        const copy = ids.slice();
+        const [id] = copy.splice(fromIdx, 1);
+        let insertTo = to; if (insertTo > fromIdx) insertTo -= 1;
+        copy.splice(insertTo, 0, id);
+        return copy;
+      });
+      setFloating({ phase: 'landing', payload, from, targetSlotId: payload.slotId });
+    }
+  };
+
+  const handleCardPointerCancel = () => {
+    dragPendingRef.current = null;
+    try { document.body.classList.remove('is-dragging'); } catch {}
+    setFloating(null);
+  };
+
+  const isDragSource = (kind: 'catalog' | 'deckslot', idx: number) => {
+    const f = floating;
+    return !!f && f.payload.kind === kind && f.payload.idx === idx;
   };
 
   // ====== coleção ops ======
@@ -350,135 +480,55 @@ export default function DeckBuilderHtml() {
                       </button>
                     </div>
                   </div>
-                  <CardBrowser options={options} onAdd={(idx) => addToDeck(idx)} density={density} onDragPreviewStart={onDragPreviewStart} onDragPreviewEnd={onDragPreviewEnd} />
+                  <CardBrowser
+                    options={options}
+                    density={density}
+                    onCardPointerDown={handleCardPointerDown}
+                    onCardPointerMove={handleCardPointerMove}
+                    onCardPointerUp={handleCardPointerUp}
+                    onCardPointerCancel={handleCardPointerCancel}
+                    isDragSource={(idx) => isDragSource('catalog', idx)}
+                  />
                 </div>
             </div>
             {/* Deck list + seed tools */}
             <div className="col-span-5 db-card">
               <div className="db-content">
                 <h2 className="db-display text-sm mb-2">Deck List</h2>
-                <div className="grid grid-cols-3 gap-3 max-h-[56vh] overflow-auto db-scroll">
+                <div ref={deckListRef} className="grid grid-cols-3 gap-3 max-h-[56vh] overflow-auto db-scroll">
                   {deckCards.map((c, i) => (
                     <div
                       ref={setRef(slotIds[i] ?? `fallback_${i}`) as any}
                       key={slotIds[i] ?? `${c.id}-${i}`}
-                      className={`relative db-3d db-tilt ${recentlyAddedIndex === i ? 'just-added' : ''} ${(insertPos === i ? 'drop-before ' : '') + (insertPos === i + 1 ? 'drop-after ' : '')}`}
-                      draggable
-                      onDragStart={(e) => {
-                        try {
-                          e.dataTransfer.setData('text/plain', `deckslot:${i}`);
-                          // Add a generic 'text' for broader compatibility
-                          try { e.dataTransfer.setData('text', `deckslot:${i}`); } catch {}
-                          e.dataTransfer.effectAllowed = 'move';
-                          setDraggingIdx(i);
-                          setInsertPos(i);
-                          try { document.body.classList.add('is-dragging'); } catch {}
-                        } catch {}
+                      data-deck-tile={i}
+                      data-slot-id={slotIds[i]}
+                      className={`relative db-3d db-tilt ${recentlyAddedIndex === i ? 'just-added' : ''} ${removingSlotIds.has(slotIds[i]) ? 'is-removing' : ''} ${isDragSource('deckslot', i) ? 'dragging-source' : ''} ${(floating?.phase === 'dragging' && floating.insertPos === i ? 'drop-before ' : '') + (floating?.phase === 'dragging' && floating.insertPos === i + 1 ? 'drop-after ' : '')}`}
+                      style={{ touchAction: 'none', width: 'var(--card-width, 165px)', height: 'var(--card-height, 240px)' }}
+                      onPointerDown={(e) => {
+                        if (e.button !== 0 && e.pointerType === 'mouse') return;
+                        const el = e.currentTarget;
+                        el.setPointerCapture(e.pointerId);
+                        handleCardPointerDown(e, el, { kind: 'deckslot', idx: i, slotId: slotIds[i], card: c });
                       }}
-                      onDragEnd={() => {
-                        setDraggingIdx(null);
-                        setInsertPos(null);
-                        setDragOverIndex(null);
-                        try { document.body.classList.remove('is-dragging'); } catch {}
-                      }}
-                      onDragEnter={() => setDragOverIndex(i)}
-                      onDragLeave={() => setDragOverIndex((cur) => (cur === i ? null : cur))}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        // Determine insert position: before or after this tile
-                        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                        const halfway = rect.left + rect.width / 2;
-                        const pos = e.clientX < halfway ? i : i + 1;
-                        setInsertPos(pos);
-                        try {
-                          const txt = e.dataTransfer.getData('text') || e.dataTransfer.getData('text/plain');
-                          const kind = txt.split(':')[0];
-                          e.dataTransfer.dropEffect = kind === 'card' ? 'copy' : 'move';
-                        } catch {}
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const pos = insertPos ?? i + 1;
-                        try {
-                          const raw = e.dataTransfer.getData('text') || e.dataTransfer.getData('text/plain');
-                          if (!raw) return;
-                          const [kind, idxStr] = raw.split(':');
-                          const n = Number(idxStr);
-                          if (kind === 'deckslot' && Number.isFinite(n)) {
-                            // Move slot from n -> pos
-                            setDeckIdx((arr) => {
-                              const copy = arr.slice();
-                              const from = Math.max(0, Math.min(copy.length - 1, n));
-                              let to = Math.max(0, Math.min(copy.length, pos));
-                              const [val] = copy.splice(from, 1);
-                              if (to > from) to -= 1;
-                              copy.splice(to, 0, val);
-                              return copy;
-                            });
-                            setSlotIds((ids) => {
-                              const copy = ids.slice();
-                              const from = Math.max(0, Math.min(copy.length - 1, n));
-                              let to = Math.max(0, Math.min(copy.length, pos));
-                              const [id] = copy.splice(from, 1);
-                              if (to > from) to -= 1;
-                              copy.splice(to, 0, id);
-                              return copy;
-                            });
-                          } else if (kind === 'card' && Number.isFinite(n)) {
-                            insertAt(pos, n);
-                            insertSlotIdAt(pos);
-                          }
-                        } catch {}
-                        try { document.body.classList.remove('is-dragging'); } catch {}
-                        setDraggingIdx(null);
-                        setInsertPos(null);
-                        setDragOverIndex(null);
-                      }}
+                      onPointerMove={handleCardPointerMove}
+                      onPointerUp={handleCardPointerUp}
+                      onPointerCancel={handleCardPointerCancel}
+                      onDragStart={(e) => e.preventDefault()}
                     >
                       <CardFront card={c} />
                       <div className="controls absolute right-1 bottom-1 flex gap-1">
-                        <button className="text-xs px-2 py-0.5 db-pill" title="Duplicar" onClick={() => duplicateAt(i)}>+</button>
-                        <button className="text-xs px-2 py-0.5 db-pill" title="Remover" onClick={() => removeAt(i)}>×</button>
+                        <button className="text-xs px-2 py-0.5 db-pill" title="Duplicar" onPointerDown={(e) => e.stopPropagation()} onClick={() => duplicateAt(i)}>+</button>
+                        <button className="text-xs px-2 py-0.5 db-pill" title="Remover" onPointerDown={(e) => e.stopPropagation()} onClick={() => removeAt(i)}>×</button>
                       </div>
                     </div>
                   ))}
 
-                  {/* trailing drop zone - allows dropping to append at the end */}
+                  {/* trailing zone: visual only - computeInsertPos already resolves
+                      "past the last tile" to an append position on its own. */}
                   <div
-                    className={`col-span-3 flex items-center justify-center p-2 rounded-md border border-dashed ${dragOverIndex === deckIdx.length ? 'drop-target' : 'border-transparent'}`}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDragOverIndex(deckIdx.length); }}
-                    onDragEnter={() => setDragOverIndex(deckIdx.length)}
-                    onDragLeave={() => setDragOverIndex((cur) => (cur === deckIdx.length ? null : cur))}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      try {
-                        const txt = e.dataTransfer.getData('text') || e.dataTransfer.getData('text/plain');
-                        if (!txt) return;
-                        const [kind, idxStr] = txt.split(':');
-                        const n = Number(idxStr);
-                        if (kind === 'card' && Number.isFinite(n)) { insertAt(deckIdx.length, n); insertSlotIdAt(deckIdx.length); }
-                        else if (kind === 'deckslot' && Number.isFinite(n)) {
-                          // move a slot to the end
-                          setDeckIdx((arr) => {
-                            const copy = arr.slice();
-                            if (n < 0 || n >= copy.length) return copy;
-                            const [val] = copy.splice(n, 1);
-                            copy.push(val);
-                            return copy;
-                          });
-                          setSlotIds((ids) => {
-                            const copy = ids.slice();
-                            if (n < 0 || n >= copy.length) return copy;
-                            const [id] = copy.splice(n, 1);
-                            copy.push(id);
-                            return copy;
-                          });
-                        }
-                      } catch {}
-                      setDragOverIndex(null);
-                    }}
+                    className={`col-span-3 flex items-center justify-center p-2 rounded-md border border-dashed ${floating?.phase === 'dragging' && floating.insertPos === deckIdx.length ? 'drop-target' : 'border-transparent'}`}
                   >
-                    <div className="text-xs text-[#6b6f64]">Drop here to append</div>
+                    <div className="text-xs text-[#6b6f64]">Arraste até aqui para adicionar ao final</div>
                   </div>
                 </div>
                 {deckIdx.length === 0 && (
@@ -518,62 +568,7 @@ export default function DeckBuilderHtml() {
 
       </div>
     </div>
-    {/* floating drag preview portal appended to body via absolute positioning */}
-    {previewCard && previewPos && typeof document !== 'undefined' ? (
-      // render directly into document.body so it's not clipped; keep minimal markup
-      (() => {
-        try {
-          const el = document.body;
-          const container = document.createElement('div');
-          container.style.position = 'fixed';
-          container.style.left = '0';
-          container.style.top = '0';
-          container.style.pointerEvents = 'none';
-          container.style.zIndex = '9999';
-          container.className = 'deck-drag-preview-root';
-          // set transform via inline style on inner wrapper to follow cursor
-          const inner = document.createElement('div');
-          inner.style.position = 'absolute';
-          inner.style.left = `${previewPos.x}px`;
-          inner.style.top = `${previewPos.y}px`;
-          inner.style.width = density === 'compact' ? '120px' : '165px';
-          inner.style.pointerEvents = 'none';
-          inner.className = 'deck-drag-preview-inner db-3d db-tilt';
-          container.appendChild(inner);
-          // attach container once
-          if (!document.querySelector('.deck-drag-preview-root')) document.body.appendChild(container);
-          // ensure the inner gets updated on each render
-          const root = document.querySelector('.deck-drag-preview-root');
-          if (root) {
-            const i = root.querySelector('.deck-drag-preview-inner') as HTMLDivElement | null;
-            if (i) {
-              i.style.left = `${previewPos.x}px`;
-              i.style.top = `${previewPos.y}px`;
-              i.style.width = density === 'compact' ? '120px' : '165px';
-              // render a lightweight CardFront into this inner using React portal
-            }
-          }
-        } catch {}
-        return (
-          <div style={{ position: 'fixed', left: 0, top: 0, pointerEvents: 'none', zIndex: 9999 }}>
-            <div style={{ position: 'absolute', left: previewPos.x, top: previewPos.y, width: density === 'compact' ? 120 : 165, pointerEvents: 'none', transform: 'translate(-8px, -8px) scale(1.02)', boxShadow: '0 30px 60px rgba(20,22,16,.35)', display: 'flex', alignItems: 'flex-end', gap: 6 }} className="db-3d db-tilt">
-              <div style={{ transform: 'translateY(6px) rotate(-6deg)', width: 28, height: 28 }} aria-hidden>
-                {/* small hand icon to imply holding */}
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 12c0-1.1.9-2 2-2h1v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9a2 2 0 0 0-2-2h-1" stroke="#1a1b18" strokeOpacity="0.85" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M9 6v2" stroke="#1a1b18" strokeOpacity="0.85" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <div style={{ pointerEvents: 'none' }}>
-                <CardFront card={previewCard} />
-              </div>
-            </div>
-          </div>
-        );
-      })()
-    ) : null}
+    {floating && <DragGhost floating={floating} onLanded={() => { try { playSound('cardLand', 0.55); } catch {} setFloating(null); }} />}
     </>
   );
 }
-
-
