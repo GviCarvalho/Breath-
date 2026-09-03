@@ -527,7 +527,7 @@ export default function OnlineGame() {
 
           <div className="w-full border rounded-lg bg-white shadow-sm p-4">
             <div className="flex items-center justify-between text-sm text-slate-600">
-              <span>Deck: {snapshot.deckCount}</span>
+              <span>Deck: {bottomPlayer?.deckCount ?? 0}</span>
               <span>Discard: {snapshot.discardCount}</span>
               <span>Recent events: {logEntries.length}</span>
             </div>

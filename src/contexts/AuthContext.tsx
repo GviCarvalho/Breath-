@@ -12,6 +12,7 @@ interface AuthContextValue {
   loading: boolean;
   error: string | null;
   serverConfigured: boolean;
+  serverHttpUrl: string;
   login: (provider: 'google' | 'discord') => void;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
@@ -27,12 +28,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [serverConfigured, setServerConfigured] = useState(false);
   const [serverHttpUrl, setServerHttpUrl] = useState('');
+  // getConfig() is async, so serverHttpUrl starts out '' - indistinguishable
+  // from "config loaded and there's genuinely no server". Without this flag,
+  // the effect below saw the empty string on the very first render and
+  // immediately set loading=false with user still null, before config had
+  // a chance to load - any consumer's "if (!user) redirect" effect that
+  // happened to run in that window (e.g. a direct link to a match) bounced
+  // an already-logged-in player. `loading` now stays true until we actually
+  // know one way or the other.
+  const [configLoaded, setConfigLoaded] = useState(false);
 
   // Load config on mount
   useEffect(() => {
     getConfig().then((config) => {
       setServerHttpUrl(config.SERVER_HTTP_URL);
       setServerConfigured(isServerConfigured(config));
+      setConfigLoaded(true);
     });
   }, []);
 
@@ -67,12 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [serverHttpUrl]);
 
   useEffect(() => {
+    if (!configLoaded) return;
     if (serverHttpUrl) {
       refreshUser();
     } else {
       setLoading(false);
     }
-  }, [serverHttpUrl, refreshUser]);
+  }, [configLoaded, serverHttpUrl, refreshUser]);
 
   const login = useCallback((provider: 'google' | 'discord') => {
     if (!serverHttpUrl) {
@@ -142,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [serverHttpUrl]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, serverConfigured, login, loginWithEmail, registerWithEmail, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, error, serverConfigured, serverHttpUrl, login, loginWithEmail, registerWithEmail, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

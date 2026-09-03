@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bannerFor, floaterText } from '@/components/game/ui3';
-import { useMatchConnection } from '@/hooks/useMatchConnection';
+import type { useMatchConnection } from '@/hooks/useMatchConnection';
 import { makeDeck, initialHandSetup, resolveRound, canPlayCard, hasAnyAvailableMove, refillHand, drawCards, MAX_BREATH, INITIAL_HAND_SIZE, HAND_SIZE as ENGINE_HAND_SIZE, type TcgCard, type PlayerState, type Priority, type ImpactKind, type DefeatTag } from '@/engine';
 import { playSound, type SfxKey } from '@/lib/sound';
 import { resolveSingleAction, choosePostureForAi, createPredictor, postureCharToIndex, chooseCardForAiPredictive, chooseCardForAi } from '@/engine';
@@ -36,9 +36,32 @@ function roundTiming(events: ImpactKind[]) {
     : { beat: 150, step: 0, grace: 250 };
 }
 
-export default function Game({ isLocal }: { isLocal: boolean }) {
+// A player's own slot on the server is always 'p1' (created the room) or
+// 'p2' (joined it) - never guaranteed to be 'p1'. Every ImpactKind/DefeatTag
+// the server sends is phrased in ITS slot terms, but the whole HUD (and the
+// win-counting/game-over-tone logic below) is written assuming "p1 is always
+// you". These swap the p1/p2 suffix so a p2-in-server-terms player still
+// sees themself as the bottom "p1" hand, same as before online mode existed.
+function swapSlotSuffix<T extends string>(value: T, mySlot: 'p1' | 'p2'): T {
+  if (mySlot === 'p1') return value;
+  if (value.endsWith('_p1')) return (value.slice(0, -3) + '_p2') as T;
+  if (value.endsWith('_p2')) return (value.slice(0, -3) + '_p1') as T;
+  return value;
+}
+
+function remapDefeatTag(tag: DefeatTag, mySlot: 'p1' | 'p2'): DefeatTag {
+  if (!tag || tag === 'both' || mySlot === 'p1') return tag;
+  return tag === 'p1' ? 'p2' : 'p1';
+}
+
+function remapExtraPending(pending: 'none' | 'p1' | 'p2', mySlot: 'p1' | 'p2'): 'none' | 'p1' | 'p2' {
+  if (pending === 'none' || mySlot === 'p1') return pending;
+  return pending === 'p1' ? 'p2' : 'p1';
+}
+
+export default function Game({ isLocal, connection }: { isLocal: boolean; connection?: ReturnType<typeof useMatchConnection> }) {
   const navigate = useNavigate();
-  const { playerName, setPlayerName, lastMatchId, setLastMatchId, activeDeck } = useAppState();
+  const { playerName, setPlayerName, activeDeck } = useAppState();
   const [impact, setImpact] = useState<ImpactKind>('none');
   const [impactSeq, setImpactSeq] = useState(0);
   const [banner, setBanner] = useState<string | null>(null);
@@ -49,14 +72,18 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
   const [p1Wins, setP1Wins] = useState(0);
   const [p2Wins, setP2Wins] = useState(0);
 
-  const {
-    status,
-    snapshot,
-    events,
-    playCard: playCardConnection,
-    refreshMatchList,
-    matchList,
-  } = useMatchConnection();
+  // Online mode gets its snapshot/events from the SAME connection the
+  // parent page (OnlineGamePage/MatchPage/SpectatePage) already used to
+  // create/join the match - calling useMatchConnection() again here would
+  // open a second, unrelated WebSocket that never joined anything.
+  const mySlot: 'p1' | 'p2' = connection?.role === 'p2' ? 'p2' : 'p1';
+  const isSpectator = connection?.role === 'spectator';
+  const oppSlot: 'p1' | 'p2' = mySlot === 'p1' ? 'p2' : 'p1';
+  const snapshot = connection?.snapshot ?? null;
+  const onlineEvents = useMemo(
+    () => (connection?.events ?? ['none']).map((k) => swapSlotSuffix(k, isSpectator ? 'p1' : mySlot)),
+    [connection?.events, mySlot, isSpectator]
+  );
 
   const timeoutRefs = useRef<number[]>([]);
 
@@ -105,19 +132,24 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     if (f2) handleFloater(f2, 'p2');
   };
 
+  // Local mode drives its own per-action timeline inline (see
+  // handleResolveRound/playExtraAction/resolveSingleWhenOtherPasses below);
+  // online mode has no local resolution to hook that into, so it replays
+  // whatever ImpactKind[] the server just broadcast for this round instead.
   useEffect(() => {
+    if (isLocal) return;
     timeoutRefs.current.forEach((id) => window.clearTimeout(id));
     timeoutRefs.current = [];
-    if (!events || events.length === 0) {
+    if (!onlineEvents || onlineEvents.length === 0) {
       setImpact('none');
       setBanner(null);
       setFloaters([]);
       return;
     }
 
-    const { beat, step, grace } = roundTiming(events);
+    const { beat, step, grace } = roundTiming(onlineEvents);
     let cursor = beat;
-    events.forEach((kind) => {
+    onlineEvents.forEach((kind) => {
       const handle = window.setTimeout(() => showImpactTick(kind), cursor);
       timeoutRefs.current.push(handle);
       cursor += step;
@@ -129,7 +161,8 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
       setFloaters([]);
     }, cursor + grace);
     timeoutRefs.current.push(clearHandle);
-  }, [events]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineEvents, isLocal]);
 
   // Slots de jogadores
   const [player1, setPlayer1] = useState({ name: 'Player 1', isCPU: false, hand: [] as TcgCard[] });
@@ -151,34 +184,6 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
 
 
   // A lógica de decisão da CPU fica exclusivamente dentro do componente CpuPlayer
-
-  const createLocalMatch = () => {
-    const matchId = `local-${Date.now()}`;
-    const match = {
-      id: matchId,
-      players: {
-        p1: { id: 'player1', name: player1.name || 'Player 1' },
-        p2: { id: 'player2', name: player2.name || 'CPU' },
-      },
-      status: 'waiting',
-    };
-    localStorage.setItem('localMatch', JSON.stringify(match));
-    setLastMatchId(matchId);
-  };
-
-  const getLocalMatchList = () => {
-    const match = localStorage.getItem('localMatch');
-    return match ? [JSON.parse(match)] : [];
-  };
-
-  useEffect(() => {
-    if (status === 'idle') {
-      const localMatches = getLocalMatchList();
-      refreshMatchList().then(() => {
-        console.log('Local matches:', localMatches);
-      });
-    }
-  }, [status]);
 
   // Função para construir o estado inicial do jogo
   function buildInitialGame(playerName: string, opponentName: string, p1Seed?: string, p2Seed?: string) {
@@ -708,13 +713,6 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     resetToNewGame();
   };
 
-  const gameOverLabel = () => {
-    if (!gameOver) return null;
-    if (gameOver === 'both') return 'Ambos ficaram sem fôlego';
-    if (gameOver === 'p1') return `${p1.name} ficou sem fôlego`;
-    return `${p2.name} ficou sem fôlego`;
-  };
-
   // CPU joga automaticamente a extra quando for o turno de extra
   useEffect(() => {
     if (extraPending === 'p2' && player2.isCPU) {
@@ -798,18 +796,91 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
     }
   }, [isLocal]);
 
+  // ---- Online mode: sync the shared gameOver/extraPending state from the
+  // server's snapshot instead of local resolution, so gameOverLabel(), the
+  // Bo3 win-counting effect, and the CPU-auto-extra effect (which only ever
+  // fires when player2.isCPU, always false online) all keep working
+  // unmodified regardless of which mode actually produced the value. ----
+  const targetSlot: 'p1' | 'p2' = isSpectator ? 'p1' : mySlot;
+  useEffect(() => {
+    if (isLocal || !snapshot) return;
+    setGameOver((cur) => {
+      const mapped = remapDefeatTag(snapshot.gameOver, targetSlot);
+      if (mapped && mapped !== cur) setShowGameOverModal(true);
+      return mapped;
+    });
+    setExtraPending(remapExtraPending(snapshot.extraPending, targetSlot));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLocal, snapshot?.gameOver, snapshot?.extraPending, targetSlot]);
+
+  // Surface a rejected move (wrong posture, not enough breath, etc.) the
+  // same way local mode's own validation does.
+  useEffect(() => {
+    if (isLocal || !connection?.error) return;
+    setBanner(connection.error);
+    const t = window.setTimeout(() => setBanner(null), 2200);
+    return () => window.clearTimeout(t);
+  }, [isLocal, connection?.error]);
+
+  // Derived, non-state display values for online/spectator mode - p1/p2
+  // above are the LOCAL simulation's own state and are never touched here,
+  // so there's no risk of the local engine's handlers (which never run when
+  // !isLocal) fighting over the same state with server-driven updates.
+  const displayP1 = isLocal
+    ? { ...p1, facedownCount: p1.hand.length, committed: Boolean(p1.revealed) }
+    : snapshot
+      ? { ...snapshot.players[targetSlot], facedownCount: snapshot.players[targetSlot].handCount }
+      : { name: '...', posture: 'A' as const, breath: 0, hand: [], revealed: null, committed: false, facedownCount: 0 };
+  const oppTargetSlot: 'p1' | 'p2' = targetSlot === 'p1' ? 'p2' : 'p1';
+  const displayP2 = isLocal
+    ? { ...p2, facedownCount: p2.hand.length, committed: Boolean(p2.revealed) }
+    : snapshot
+      ? { ...snapshot.players[oppTargetSlot], facedownCount: snapshot.players[oppTargetSlot].handCount }
+      : { name: '...', posture: 'A' as const, breath: 0, hand: [], revealed: null, committed: false, facedownCount: 0 };
+  const displayDeckP1Count = isLocal ? deckP1.length : (snapshot?.players[targetSlot].deckCount ?? 0);
+  const displayDeckP2Count = isLocal ? deckP2.length : (snapshot?.players[oppTargetSlot].deckCount ?? 0);
+  const displayPriorityOwner: Priority = isLocal
+    ? priorityOwner
+    : !snapshot
+      ? 0
+      : targetSlot === 'p1' ? snapshot.priorityOwner : (snapshot.priorityOwner === 0 ? 1 : 0);
+  const displayLog = isLocal ? log : (snapshot?.log ?? []);
+
+  const gameOverLabel = () => {
+    if (!gameOver) return null;
+    if (gameOver === 'both') return 'Ambos ficaram sem fôlego';
+    if (gameOver === 'p1') return `${displayP1.name} ficou sem fôlego`;
+    return `${displayP2.name} ficou sem fôlego`;
+  };
+
+  const handleExitToMenu = () => {
+    setShowGameOverModal(false);
+    if (!isLocal) connection?.leaveMatch();
+    navigate('/');
+  };
+  const handleNextGame = () => {
+    setShowGameOverModal(false);
+    if (isLocal) resetToNewGame();
+    else connection?.resetMatch();
+  };
+  const handleRestartSeries = () => {
+    setShowGameOverModal(false);
+    if (isLocal) restartSeries();
+    else { setP1Wins(0); setP2Wins(0); connection?.resetMatch(); }
+  };
+
   // Renderização
   return (
     <div>
       <ArenaPrototype
-        p1={{ ...p1, facedownCount: p1.hand.length }}
-        p2={{ ...p2, facedownCount: p2.hand.length }}
+        p1={displayP1}
+        p2={displayP2}
         p1Wins={p1Wins}
         p2Wins={p2Wins}
-        deckP1Count={deckP1.length}
-        deckP2Count={deckP2.length}
-        priorityOwner={priorityOwner}
-        log={log}
+        deckP1Count={displayDeckP1Count}
+        deckP2Count={displayDeckP2Count}
+        priorityOwner={displayPriorityOwner}
+        log={displayLog}
         extraPending={extraPending}
         selectedIdx={selectedIdx}
         selectedP2Idx={selectedP2Idx}
@@ -823,15 +894,18 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
         impactSeq={impactSeq}
         banner={banner}
         floaters={floaters}
-        p2IsCpu={player2.isCPU}
-        onToggleP2Cpu={() => setPlayer2((prev) => ({ ...prev, isCPU: !prev.isCPU }))}
-        onClickP1Card={(card) => handlePlayCard(card, 'player1')}
-        onClickP2Card={(card) => handlePlayCard(card, 'player2')}
+        p2IsCpu={isLocal ? player2.isCPU : undefined}
+        onToggleP2Cpu={isLocal ? () => setPlayer2((prev) => ({ ...prev, isCPU: !prev.isCPU })) : undefined}
+        onClickP1Card={(card) => {
+          if (isLocal) handlePlayCard(card, 'player1');
+          else if (!isSpectator) connection?.playCard(card.id);
+        }}
+        onClickP2Card={isLocal ? (card) => handlePlayCard(card, 'player2') : undefined}
         onHoverCard={setHoverCard}
-        onClickSetP1Posture={(posture) => handleSetPosture(posture, 'player1')}
-        onClickSetP2Posture={(posture) => handleSetPosture(posture, 'player2')}
-        onClickDraw={() => handleDrawCard('player1')}
-        onClickDrawP2={() => handleDrawCard('player2')}
+        onClickSetP1Posture={isLocal ? (posture) => handleSetPosture(posture, 'player1') : undefined}
+        onClickSetP2Posture={isLocal ? (posture) => handleSetPosture(posture, 'player2') : undefined}
+        onClickDraw={isLocal ? () => handleDrawCard('player1') : undefined}
+        onClickDrawP2={isLocal ? () => handleDrawCard('player2') : undefined}
       />
       {showGameOverModal && (() => {
         // p1 is always "you" in the HUD (local/online), so the tone reads
@@ -869,11 +943,11 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
                   border: `2px solid ${accent}`, color: accentDark, background: '#fff',
                 }}
               >
-                {p1.name} {p1Wins} × {p2Wins} {p2.name}
+                {displayP1.name} {p1Wins} × {p2Wins} {displayP2.name}
               </div>
               <div className="flex justify-center gap-3 w-full">
                 <button
-                  onClick={() => { setShowGameOverModal(false); navigate('/'); }}
+                  onClick={handleExitToMenu}
                   className="dojo-display"
                   style={{
                     flex: 1, padding: '10px 18px', borderRadius: 8, border: '2px solid #1a1b18', background: '#fbfbf9',
@@ -884,7 +958,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
                 </button>
                 {Math.max(p1Wins, p2Wins) < 2 ? (
                   <button
-                    onClick={() => { setShowGameOverModal(false); resetToNewGame(); }}
+                    onClick={handleNextGame}
                     className="dojo-display"
                     style={{
                       flex: 1, padding: '10px 18px', borderRadius: 8, border: `2px solid ${accentDark}`, background: accent,
@@ -895,7 +969,7 @@ export default function Game({ isLocal }: { isLocal: boolean }) {
                   </button>
                 ) : (
                   <button
-                    onClick={() => { restartSeries(); setShowGameOverModal(false); }}
+                    onClick={handleRestartSeries}
                     className="dojo-display"
                     style={{
                       flex: 1, padding: '10px 18px', borderRadius: 8, border: `2px solid ${accentDark}`, background: accent,

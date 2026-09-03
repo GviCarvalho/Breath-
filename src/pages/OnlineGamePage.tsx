@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMatchConnection } from '@/hooks/useMatchConnection';
+import { useAppState } from '@/store/appState';
+import { useLobby } from '@/contexts/LobbyContext';
 import { Button } from '@/components/ui/button';
 import Game from '@/features/game/Game';
 
@@ -9,12 +11,20 @@ const CopyIcon = new URL('../Assets/icons/copy.svg', import.meta.url).href;
 
 export default function OnlineGamePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { createMatch, status, matchId } = useMatchConnection();
+  const [searchParams] = useSearchParams();
+  const inviteTo = searchParams.get('inviteTo');
+  const { user, loading } = useAuth();
+  const { activeDeck } = useAppState();
+  const { inviteFriend } = useLobby();
+  const connection = useMatchConnection();
+  const { createMatch, status, matchId } = connection;
   const [hasCreated, setHasCreated] = useState(false);
+  const [hasInvited, setHasInvited] = useState(false);
 
   useEffect(() => {
-    // Redirect to login if not authenticated
+    // See MatchPage.tsx: `loading` must settle before trusting `!user`,
+    // otherwise an already-logged-in player gets bounced on every fresh load.
+    if (loading) return;
     if (!user) {
       alert('Você precisa estar logado para criar uma sala.');
       navigate('/', { replace: true });
@@ -23,10 +33,19 @@ export default function OnlineGamePage() {
 
     // Auto-create match when component mounts
     if (!hasCreated && status === 'idle') {
-      createMatch(user.displayName);
+      createMatch(user.displayName, activeDeck?.seed);
       setHasCreated(true);
     }
-  }, [user, navigate, createMatch, status, hasCreated]);
+  }, [user, loading, navigate, createMatch, status, hasCreated, activeDeck]);
+
+  // Arrived here via "Convidar" on the friends list (?inviteTo=<userId>) -
+  // once the room actually exists, push the invite so the friend doesn't
+  // have to be handed a code at all.
+  useEffect(() => {
+    if (!inviteTo || hasInvited || status !== 'waiting' || !matchId) return;
+    inviteFriend(inviteTo, matchId);
+    setHasInvited(true);
+  }, [inviteTo, hasInvited, status, matchId, inviteFriend]);
 
   // Show match ID once created
   if (status === 'waiting' && matchId) {
@@ -61,5 +80,5 @@ export default function OnlineGamePage() {
     );
   }
 
-  return <Game isLocal={false} />;
+  return <Game isLocal={false} connection={connection} />;
 }

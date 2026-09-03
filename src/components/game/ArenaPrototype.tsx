@@ -101,8 +101,8 @@ function replayClass(el: Element | null, cls: string) {
 }
 
 export interface ArenaProps {
-  p1: { name: string; posture: Posture; breath: number; hand: TcgCard[]; revealed?: TcgCard | null; facedownCount?: number };
-  p2: { name: string; posture: Posture; breath: number; hand: TcgCard[]; revealed?: TcgCard | null; facedownCount?: number };
+  p1: { name: string; posture: Posture; breath: number; hand: TcgCard[]; revealed?: TcgCard | null; committed?: boolean; facedownCount?: number };
+  p2: { name: string; posture: Posture; breath: number; hand: TcgCard[]; revealed?: TcgCard | null; committed?: boolean; facedownCount?: number };
   p1Wins?: number;
   p2Wins?: number;
   deckP1Count: number;
@@ -216,8 +216,14 @@ export default function ArenaPrototype({
 
   const landFlight = useCallback((flight: Flight) => {
     setFlights((cur) => cur.filter((f) => f.id !== flight.id));
-    setTableCard((cur) => ({ ...cur, [flight.side]: flight.card }));
-    try { playSound('cardLand', 0.6); } catch {}
+    // Landing fires on its own ~460ms timer, decoupled from state - if the
+    // round already resolved and moved on (revealed cycled back to null)
+    // before this flight finished, applying it now would re-plant a stale
+    // card on a table the next round already expects to be empty.
+    if (prevRevealedId.current[flight.side] === flight.card.id) {
+      setTableCard((cur) => ({ ...cur, [flight.side]: flight.card }));
+      try { playSound('cardLand', 0.6); } catch {}
+    }
   }, []);
 
   // A fresh deck (more cards than last seen) means a brand new game/series
@@ -240,6 +246,11 @@ export default function ArenaPrototype({
         setFlights((cur) => [...cur, { id: `p1-${p1Id}-${Date.now()}`, side: 'p1', card: p1.revealed!, from, to, flipMidair: false }]);
         try { playSound('cardWhoosh', 0.5); } catch {}
       }
+    } else if (!p1Id && prevRevealedId.current.p1) {
+      // Round resolved and this side's reveal was cleared - drop whatever was
+      // resting on the table so the next round starts from an empty slot
+      // instead of showing last round's card until it gets overwritten.
+      setTableCard((c) => ({ ...c, p1: null }));
     }
 
     const p2Id = p2?.revealed?.id ?? null;
@@ -251,6 +262,8 @@ export default function ArenaPrototype({
         setFlights((cur) => [...cur, { id: `p2-${p2Id}-${Date.now()}`, side: 'p2', card: p2.revealed!, from, to, flipMidair: true }]);
         try { playSound('cardWhoosh', 0.5); } catch {}
       }
+    } else if (!p2Id && prevRevealedId.current.p2) {
+      setTableCard((c) => ({ ...c, p2: null }));
     }
 
     prevRevealedId.current = { p1: p1Id, p2: p2Id };
@@ -493,7 +506,7 @@ export default function ArenaPrototype({
                   <div key={f.id} className={`floater ${floaterTone(f.text)}`}>{f.text}</div>
                 ))}
               </div>
-              {tableCard.p2 && (
+              {tableCard.p2 ? (
                 <div
                   key={tableCard.p2.id}
                   ref={tableCardTopRef}
@@ -504,7 +517,14 @@ export default function ArenaPrototype({
                 >
                   <CardFront card={tableCard.p2} />
                 </div>
-              )}
+              ) : p2.committed ? (
+                <div
+                  className="card table-card table-card-committed"
+                  style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 9 }}
+                >
+                  <CardBack />
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="lane bot">
@@ -515,7 +535,7 @@ export default function ArenaPrototype({
                   <div key={f.id} className={`floater ${floaterTone(f.text)}`}>{f.text}</div>
                 ))}
               </div>
-              {tableCard.p1 && (
+              {tableCard.p1 ? (
                 <div
                   key={tableCard.p1.id}
                   ref={tableCardBotRef}
@@ -526,7 +546,14 @@ export default function ArenaPrototype({
                 >
                   <CardFront card={tableCard.p1} />
                 </div>
-              )}
+              ) : p1.committed ? (
+                <div
+                  className="card table-card table-card-committed"
+                  style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 9 }}
+                >
+                  <CardBack />
+                </div>
+              ) : null}
             </div>
           </div>
 

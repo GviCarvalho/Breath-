@@ -11,16 +11,18 @@ export interface PlayerSnapshot {
   hand: TcgCard[];
   handCount: number;
   revealed: TcgCard | null;
+  committed: boolean;
+  deckCount: number;
 }
 
 export interface MatchSnapshot {
   matchId: string;
   priorityOwner: Priority;
   gameOver: DefeatTag;
-  deckCount: number;
   discardCount: number;
   log: string[];
   players: Record<PlayerSlot, PlayerSnapshot>;
+  extraPending: 'none' | PlayerSlot;
 }
 
 export interface MatchSummary {
@@ -33,13 +35,14 @@ export interface MatchSummary {
 }
 
 export type ClientMessage =
-  | { type: 'create_match'; name?: string }
-  | { type: 'join_match'; matchId: string; name?: string }
+  | { type: 'create_match'; name?: string; deckSeed?: string }
+  | { type: 'join_match'; matchId: string; name?: string; deckSeed?: string }
   | { type: 'spectate_match'; matchId: string; name?: string }
   | { type: 'list_matches' }
   | { type: 'play_card'; matchId: string; playerId: string; cardId: string }
   | { type: 'reset_match'; matchId: string; playerId: string }
-  | { type: 'leave_match'; matchId: string; playerId?: string };
+  | { type: 'leave_match'; matchId: string; playerId?: string }
+  | { type: 'invite_friend'; toUserId: string; matchId: string };
 
 export type ServerMessage =
   | { type: 'match_created'; matchId: string; playerId: string; role: PlayerSlot; snapshot: MatchSnapshot }
@@ -49,21 +52,32 @@ export type ServerMessage =
   | { type: 'match_list'; matches: MatchSummary[] }
   | { type: 'opponent_joined'; name: string }
   | { type: 'opponent_left' }
+  | { type: 'match_invite'; matchId: string; fromUserId: string; fromName: string }
   | { type: 'error'; message: string };
 
+// A card only becomes visible to the OTHER side once both players have
+// revealed one for this round (or window) - broadcastState fires the
+// instant a single player confirms, well before their opponent has had a
+// chance to react, so without this gate the second player could see the
+// first player's actual card before choosing their own, defeating the
+// simultaneous-reveal mechanic the whole game is built on. Each player
+// (and any spectator) can always see their OWN revealed card immediately.
 export function sanitizeSnapshot(snapshot: MatchSnapshot, role: ParticipantRole): MatchSnapshot {
+  const bothRevealed = Boolean(snapshot.players.p1.revealed) && Boolean(snapshot.players.p2.revealed);
+  const visible = (slot: PlayerSlot) => role === slot || bothRevealed;
+
   const copy: MatchSnapshot = {
     ...snapshot,
     players: {
       p1: {
         ...snapshot.players.p1,
         hand: [],
-        revealed: snapshot.players.p1.revealed ? { ...snapshot.players.p1.revealed } : null,
+        revealed: visible('p1') && snapshot.players.p1.revealed ? { ...snapshot.players.p1.revealed } : null,
       },
       p2: {
         ...snapshot.players.p2,
         hand: [],
-        revealed: snapshot.players.p2.revealed ? { ...snapshot.players.p2.revealed } : null,
+        revealed: visible('p2') && snapshot.players.p2.revealed ? { ...snapshot.players.p2.revealed } : null,
       },
     },
     log: [...snapshot.log],
